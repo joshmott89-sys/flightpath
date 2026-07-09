@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Live Journey Radar</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(25, 33, 50, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #ffffff;
+            --text-secondary: #8e9bb0;
+            --accent-color: #38bdf8;
+            --accent-success: #34d399;
+            --accent-warning: #fbbf24;
+            --safe-area-top: env(safe-area-inset-top, 20px);
+            --safe-area-bottom: env(safe-area-inset-bottom, 20px);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, 'SF Pro Display', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding-top: var(--safe-area-top);
+            padding-bottom: var(--safe-area-bottom);
+        }
+
+        .dashboard {
+            width: 100%;
+            max-width: 430px;
+            margin: 0 auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .segment-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px;
+            border-radius: 16px;
+            border: 1px solid var(--card-border);
+        }
+
+        .segment-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 10px 4px;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .segment-btn.active {
+            background: var(--accent-color);
+            color: #000000;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px;
+        }
+
+        header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-badge.active-flight {
+            background: rgba(52, 211, 153, 0.15);
+            color: var(--accent-success);
+            border: 1px solid rgba(52, 211, 153, 0.2);
+        }
+        .status-badge.active-flight::before {
+            content: ''; width: 8px; height: 8px; background-color: var(--accent-success); border-radius: 50%; box-shadow: 0 0 8px var(--accent-success);
+        }
+
+        .status-badge.layover {
+            background: rgba(251, 191, 36, 0.15);
+            color: var(--accent-warning);
+            border: 1px solid rgba(251, 191, 36, 0.2);
+        }
+        .status-badge.layover::before {
+            content: ''; width: 8px; height: 8px; background-color: var(--accent-warning); border-radius: 50%; box-shadow: 0 0 8px var(--accent-warning);
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 20px;
+        }
+
+        .route-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .airport-block {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .airport-code {
+            font-size: 34px;
+            font-weight: 700;
+            letter-spacing: -1px;
+        }
+
+        .airport-name {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .airport-block.right {
+            text-align: right;
+        }
+
+        .flight-icon-wrapper {
+            position: absolute;
+            left: 50%;
+            top: 40%;
+            transform: translate(-50%, -50%);
+            width: 38%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .flight-line {
+            width: 100%;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+
+        .flight-line-fill {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            background: var(--accent-color);
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+
+        .plane-svg {
+            position: absolute;
+            top: 50%;
+            left: 0%;
+            transform: translate(-50%, -50%) rotate(90deg);
+            fill: var(--accent-color);
+            width: 18px;
+            height: 18px;
+            transition: left 0.4s ease;
+        }
+
+        .progress-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            padding-top: 16px;
+            margin-top: 12px;
+        }
+
+        .metric-box {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .metric-box.bottom-row {
+            margin-top: 12px;
+        }
+
+        .map-card {
+            padding: 0;
+            overflow: hidden;
+            height: 280px;
+            border-radius: 24px;
+            border: 1px solid var(--card-border);
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            background: #0b0f19;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .sub-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 14px 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard">
+        <div class="segment-selector">
+            <button class="segment-btn" id="btn-leg0" onclick="userSwitchSegment(0)">Leg 1: VIE-DXB</button>
+            <button class="segment-btn" id="btn-leg1" onclick="userSwitchSegment(1)">Layover</button>
+            <button class="segment-btn" id="btn-leg2" onclick="userSwitchSegment(2)">Leg 2: DXB-PER</button>
+        </div>
+
+        <header>
+            <div>
+                <h1 id="flight-number">--</h1>
+                <p style="font-size: 14px; color: var(--text-secondary);" id="airline-name">Emirates</p>
+            </div>
+            <div class="status-badge" id="flight-status">Loading</div>
+        </header>
+
+        <div class="card">
+            <div class="route-container">
+                <div class="airport-block">
+                    <span class="airport-code" id="origin-code">---</span>
+                    <span class="airport-name" id="origin-name">---</span>
+                </div>
+                
+                <div class="flight-icon-wrapper" id="flight-visuals-wrapper">
+                    <div class="flight-line">
+                        <div class="flight-line-fill" id="progress-bar-fill"></div>
+                    </div>
+                    <svg class="plane-svg" id="progress-plane" viewBox="0 0 24 24">
+                        <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L14 19v-5.5l8 2.5z"/>
+                    </svg>
+                </div>
+
+                <div class="airport-block right">
+                    <span class="airport-code" id="dest-code">---</span>
+                    <span class="airport-name" id="dest-name">---</span>
+                </div>
+            </div>
+
+            <div class="progress-metrics">
+                <div class="metric-box">
+                    <div class="metric-label" id="label-top-left">Departure Time (Perth Time)</div>
+                    <div class="metric-value" id="val-top-left">--:--</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label" id="label-top-right">Time Remaining</div>
+                    <div class="metric-value" id="val-top-right">--</div>
+                </div>
+                <div class="metric-box bottom-row">
+                    <div class="metric-label" id="label-bottom-left">Arrival Time (Perth Time)</div>
+                    <div class="metric-value" id="val-bottom-left" style="color: var(--accent-color);">--:--</div>
+                </div>
+                <div class="metric-box bottom-row">
+                    <div class="metric-label" id="label-bottom-right">Time Remaining Until Landing</div>
+                    <div class="metric-value" id="val-bottom-right">--</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card map-card">
+            <div id="map"></div>
+        </div>
+
+        <div class="details-grid">
+            <div class="sub-card">
+                <div class="metric-label" id="grid-lbl-1">Altitude</div>
+                <div class="metric-value" id="altitude">-</div>
+            </div>
+            <div class="sub-card">
+                <div class="metric-label" id="grid-lbl-2">Ground Speed</div>
+                <div class="metric-value" id="speed">-</div>
+            </div>
+            <div class="sub-card">
+                <div class="metric-label" id="grid-lbl-3">Flight Duration</div>
+                <div class="metric-value" id="flight-duration">--:--</div>
+            </div>
+            <div class="sub-card">
+                <div class="metric-label" id="grid-lbl-4">Aircraft Type</div>
+                <div class="metric-value" id="aircraft-type">---</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let currentRenderedIndex = -1;
+        let userHasOverridden = false;
+        let map;
+        let mapLayers = [];
+
+        const ITINERARY = [
+            {
+                type: "flight",
+                flightNum: "EK128",
+                airline: "Emirates",
+                aircraft: "Boeing 777-300ER",
+                duration: "5h 50m",
+                origin: { code: "VIE", name: "Vienna", lat: 48.1103, lng: 16.5697 },
+                destination: { code: "DXB", name: "Dubai", lat: 25.2532, lng: 55.3657 },
+                startTime: Date.parse("2026-07-09T13:35:00Z"), // 15:35 Vienna Local
+                endTime: Date.parse("2026-07-09T19:25:00Z"),   // 23:25 Dubai Local
+                displayDep: "21:35 (9 July)",
+                displayArr: "03:25 AM (10 July)"
+            },
+            {
+                type: "layover",
+                flightNum: "Dubai Layover",
+                airline: "Dubai International",
+                aircraft: "Terminal 3",
+                duration: "3h 20m",
+                origin: { code: "VIE", name: "Completed Leg", lat: 48.1103, lng: 16.5697 },
+                destination: { code: "PER", name: "Next Leg", lat: -31.9403, lng: 115.9669 },
+                currentPos: { lat: 25.2532, lng: 55.3657 },
+                startTime: Date.parse("2026-07-09T19:25:00Z"),
+                endTime: Date.parse("2026-07-09T22:45:00Z"),   // 02:45 Dubai Local
+                displayDep: "03:25 AM (10 July)",
+                displayArr: "06:45 AM (10 July)"
+            },
+            {
+                type: "flight",
+                flightNum: "EK420",
+                airline: "Emirates",
+                aircraft: "Airbus A380",
+                duration: "10h 50m",
+                origin: { code: "DXB", name: "Dubai", lat: 25.2532, lng: 55.3657 },
+                destination: { code: "PER", name: "Perth", lat: -31.9403, lng: 115.9669 },
+                startTime: Date.parse("2026-07-09T22:45:00Z"), // 02:45 Dubai Local
+                endTime: Date.parse("2026-07-10T09:35:00Z"),   // 17:35 Perth Local
+                displayDep: "06:45 AM (10 July)",
+                displayArr: "17:35 (10 July)"
+            }
+        ];
+
+        function initMap() {
+            map = L.map('map', { zoomControl: false, attributionControl: false, worldCopyJump: true });
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 10 }).addTo(map);
+        }
+
+        function determineActiveIndex() {
+            const now = Date.now();
+            if (now < ITINERARY[0].startTime) return 0;
+            if (now >= ITINERARY[0].startTime && now < ITINERARY[0].endTime) return 0;
+            if (now >= ITINERARY[1].startTime && now < ITINERARY[1].endTime) return 1;
+            return 2;
+        }
+
+        function userSwitchSegment(index) {
+            userHasOverridden = true;
+            currentRenderedIndex = index;
+            renderJourneyState(index);
+        }
+
+        function formatTimeRemaining(diffMs) {
+            if (diffMs <= 0) return "0h 0m";
+            const hrs = Math.floor(diffMs / 3600000);
+            const mins = Math.round((diffMs % 3600000) / 60000);
+            return `${hrs}h ${mins}m`;
+        }
+
+        function renderJourneyState(index) {
+            const segment = ITINERARY[index];
+            const now = Date.now();
+
+            mapLayers.forEach(layer => map.removeLayer(layer));
+            mapLayers = [];
+
+            for (let i = 0; i < 3; i++) {
+                document.getElementById(`btn-leg${i}`).classList.toggle('active', i === index);
+            }
+
+            document.getElementById('flight-number').innerText = segment.flightNum;
+            document.getElementById('airline-name').innerText = segment.airline;
+            document.getElementById('origin-code').innerText = segment.origin.code;
+            document.getElementById('origin-name').innerText = segment.origin.name;
+            document.getElementById('dest-code').innerText = segment.destination.code;
+            document.getElementById('dest-name').innerText = segment.destination.name;
+            document.getElementById('aircraft-type').innerText = segment.aircraft;
+            document.getElementById('flight-duration').innerText = segment.duration;
+
+            let currentLat = segment.origin.lat;
+            let currentLng = segment.origin.lng;
+            let progressPercent = 0;
+
+            if (segment.type === "layover") {
+                document.getElementById('flight-status').innerText = "Terminal Layover";
+                document.getElementById('flight-status').className = "status-badge layover";
+                
+                document.getElementById('label-top-left').innerText = "Arrived DXB (Perth Time)";
+                document.getElementById('label-top-right').innerText = "Layover Time Total";
+                document.getElementById('label-bottom-left').innerText = "Next Departure (Perth Time)";
+                document.getElementById('label-bottom-right').innerText = "Time Remaining in Dubai";
+                
+                document.getElementById('grid-lbl-1').innerText = "Airport Terminal";
+                document.getElementById('grid-lbl-2').innerText = "Status";
+                document.getElementById('grid-lbl-3').innerText = "Total Connection Window";
+                document.getElementById('grid-lbl-4').innerText = "Concourse Wing";
+
+                document.getElementById('val-top-left').innerText = segment.displayDep;
+                document.getElementById('val-top-right').innerText = segment.duration;
+                document.getElementById('val-bottom-left').innerText = segment.displayArr;
+
+                document.getElementById('altitude').innerText = "Ground";
+                document.getElementById('speed').innerText = "Stationary";
+                document.getElementById('flight-visuals-wrapper').style.visibility = 'hidden';
+
+                if (now < segment.startTime) {
+                    document.getElementById('val-bottom-right').innerText = "En Route";
+                } else if (now > segment.endTime) {
+                    document.getElementById('val-bottom-right').innerText = "Completed";
+                } else {
+                    document.getElementById('val-bottom-right').innerText = formatTimeRemaining(segment.endTime - now);
+                }
+
+                currentLat = segment.currentPos.lat;
+                currentLng = segment.currentPos.lng;
+
+                let layoverRing = L.circle([currentLat, currentLng], { color: '#fbbf24', fillColor: '#fbbf24', fillOpacity: 0.15, radius: 2500 }).addTo(map);
+                mapLayers.push(layoverRing);
+
+            } else {
+                document.getElementById('label-top-left').innerText = "Departure Time (Perth Time)";
+                document.getElementById('label-top-right').innerText = "Time Remaining";
+                document.getElementById('label-bottom-left').innerText = "Arrival Time (Perth Time)";
+                document.getElementById('label-bottom-right').innerText = "Time Remaining Until Landing";
+                
+                document.getElementById('grid-lbl-1').innerText = "Altitude";
+                document.getElementById('grid-lbl-2').innerText = "Ground Speed";
+                document.getElementById('grid-lbl-3').innerText = "Flight Duration";
+                document.getElementById('grid-lbl-4').innerText = "Aircraft Type";
+                
+                document.getElementById('flight-visuals-wrapper').style.visibility = 'visible';
+
+                document.getElementById('val-top-left').innerText = segment.displayDep;
+                document.getElementById('val-bottom-left').innerText = segment.displayArr;
+
+                if (now < segment.startTime) {
+                    document.getElementById('flight-status').innerText = "Scheduled";
+                    document.getElementById('flight-status').className = "status-badge layover";
+                    
+                    document.getElementById('val-top-right').innerText = formatTimeRemaining(segment.startTime - now);
+                    document.getElementById('val-bottom-right').innerText = formatTimeRemaining(segment.endTime - now);
+                    
+                    document.getElementById('altitude').innerText = "0 ft";
+                    document.getElementById('speed').innerText = "0 mph";
+                    progressPercent = 0;
+                } else if (now > segment.endTime) {
+                    document.getElementById('flight-status').innerText = "Landed";
+                    document.getElementById('flight-status').className = "status-badge active-flight";
+                    document.getElementById('val-top-right').innerText = "Arrived";
+                    document.getElementById('val-bottom-right').innerText = "Touched Down";
+                    document.getElementById('altitude').innerText = "Ground";
+                    document.getElementById('speed').innerText = "0 mph";
+                    progressPercent = 100;
+                    currentLat = segment.destination.lat;
+                    currentLng = segment.destination.lng;
+                } else {
+                    document.getElementById('flight-status').innerText = "In Flight";
+                    document.getElementById('flight-status').className = "status-badge active-flight";
+                    document.getElementById('altitude').innerText = "38,500 ft";
+                    document.getElementById('speed').innerText = "540 mph";
+
+                    const totalTime = segment.endTime - segment.startTime;
+                    const elapsed = now - segment.startTime;
+                    const ratio = Math.min(Math.max(elapsed / totalTime, 0), 1);
+                    progressPercent = Math.round(ratio * 100);
+
+                    const countdownString = formatTimeRemaining(segment.endTime - now);
+                    document.getElementById('val-top-right').innerText = countdownString;
+                    document.getElementById('val-bottom-right').innerText = countdownString;
+
+                    currentLat = segment.origin.lat + (segment.destination.lat - segment.origin.lat) * ratio;
+                    currentLng = segment.origin.lng + (segment.destination.lng - segment.origin.lng) * ratio;
+                }
+
+                document.getElementById('progress-bar-fill').style.width = progressPercent + '%';
+                document.getElementById('progress-plane').style.left = progressPercent + '%';
+
+                let planLine = L.polyline([[segment.origin.lat, segment.origin.lng], [segment.destination.lat, segment.destination.lng]], {
+                    color: '#8e9bb0', weight: 2, dashArray: '6, 12', opacity: 0.4
+                }).addTo(map);
+
+                let trackLine = L.polyline([[segment.origin.lat, segment.origin.lng], [currentLat, currentLng]], {
+                    color: '#38bdf8', weight: 3, opacity: 0.8
+                }).addTo(map);
+
+                mapLayers.push(planLine, trackLine);
+
+                const planeIcon = L.divIcon({
+                    html: `<svg style="transform: rotate(45deg); fill: #38bdf8; filter: drop-shadow(0px 0px 5px #38bdf8);" width="26" height="28" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L14 19v-5.5l8 2.5z"/></svg>`,
+                    className: 'custom-plane-icon', iconSize: [26, 28], iconAnchor: [13, 14]
+                });
+                let planeMarker = L.marker([currentLat, currentLng], { icon: planeIcon }).addTo(map);
+                mapLayers.push(planeMarker);
+            }
+
+            const cityOpts = { radius: 5, fillColor: "#ffffff", color: "#38bdf8", weight: 2, opacity: 1, fillOpacity: 0.9 };
+            let markerOrigin = L.circleMarker([segment.origin.lat, segment.origin.lng], cityOpts).addTo(map);
+            let markerDest = L.circleMarker([segment.destination.lat, segment.destination.lng], cityOpts).addTo(map);
+            mapLayers.push(markerOrigin, markerDest);
+
+            map.setView([currentLat, currentLng], segment.type === "layover" ? 11 : 3);
+            
+            setTimeout(() => { map.invalidateSize(); }, 50);
+        }
+
+        function engineTickLoop() {
+            if (!userHasOverridden) {
+                currentRenderedIndex = determineActiveIndex();
+            }
+            renderJourneyState(currentRenderedIndex);
+        }
+
+        window.onload = function() {
+            initMap();
+            engineTickLoop();
+            setInterval(engineTickLoop, 15000);
+        };
+    </script>
+</body>
+</html>
