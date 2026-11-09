@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1730">
+<meta name="robots" content="noindex">
+<title>Travel Card</title>
+<link rel="manifest" href="card.webmanifest">
+<link rel="icon" href="card-icon-192.png">
+<link rel="apple-touch-icon" href="card-icon-192.png">
+<style>
+  :root {
+    --navy: #0b1730;
+    --navy-2: #13254a;
+    --ink: #0e1626;
+    --ink-soft: #3d4a63;
+    --ground: #e9eef5;
+    --tile: #ffffff;
+    --line: #c9d3e2;
+    --sky: #38bdf8;
+    --sky-ink: #0b6ea3;
+    --alert: #c42b2b;
+    --ok: #157a52;
+    --radius: 22px;
+    --shadow: 0 2px 4px rgba(11, 23, 48, 0.06), 0 8px 20px rgba(11, 23, 48, 0.08);
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { font-size: 100%; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--ground);
+    color: var(--ink);
+    min-height: 100dvh;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--sky); color: var(--navy); }
+  :focus-visible { outline: 4px solid var(--sky); outline-offset: 3px; border-radius: 12px; }
+  button, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  [hidden] { display: none !important; }
+  .wrap { max-width: 520px; margin: 0 auto; }
+  .num { font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+
+  /* ---------- Card ---------- */
+  .band {
+    background: var(--navy);
+    color: #fff;
+    padding: calc(var(--safe-top) + 1rem) 1.25rem 1.25rem;
+  }
+  .band-label { font-size: 1.125rem; font-weight: 600; color: #b9cbe8; }
+  .band-spot {
+    font-size: clamp(2.1rem, 9vw, 2.75rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    margin-top: 0.25rem;
+    text-wrap: balance;
+  }
+  .band-note { font-size: 1.25rem; font-weight: 600; margin-top: 0.75rem; color: #e3ecfa; }
+  .band-note strong { color: var(--sky); font-weight: 800; }
+
+  .son {
+    display: flex; align-items: center; gap: 1rem;
+    background: var(--tile);
+    margin: -0.25rem 1rem 0;
+    position: relative;
+    top: -0.5rem;
+    border-radius: var(--radius);
+    padding: 0.875rem 1rem;
+    box-shadow: var(--shadow);
+    text-decoration: none; color: inherit;
+  }
+  .son-photo {
+    width: 84px; height: 84px; flex: none;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--ground);
+    border: 3px solid var(--navy);
+  }
+  .son-photo.empty { display: grid; place-items: center; color: var(--ink-soft); }
+  .son-who { font-size: 1.0625rem; color: var(--ink-soft); font-weight: 600; }
+  .son-name { font-size: 1.75rem; font-weight: 800; line-height: 1.1; }
+  .son-phone { font-size: 1.25rem; font-weight: 700; color: var(--sky-ink); margin-top: 0.2rem; }
+
+  .quick { display: grid; grid-template-columns: 1.25fr 1fr; gap: 0.75rem; padding: 0 1rem; margin-top: 0.25rem; }
+  .quick button {
+    min-height: 68px; border-radius: 18px; border: 1px solid var(--line);
+    display: flex; align-items: center; gap: 0.6rem; padding: 0 0.9rem;
+    font-size: 1.1875rem; font-weight: 800; text-align: left; line-height: 1.1;
+    background: var(--tile); color: var(--ink); box-shadow: var(--shadow);
+  }
+  .quick button.go { background: var(--sky); border-color: transparent; color: var(--navy); }
+  .quick svg { width: 30px; height: 30px; flex: none; stroke: currentColor; }
+  .send-loc {
+    display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+    margin: 0.75rem 1rem 0; min-height: 60px; width: calc(100% - 2rem);
+    border: none; border-radius: 18px; background: var(--ok); color: #fff;
+    font-size: 1.1875rem; font-weight: 800;
+  }
+  .send-loc svg { width: 26px; height: 26px; stroke: #fff; }
+  .help-title {
+    font-size: 1.25rem; font-weight: 800; color: var(--navy);
+    margin: 0.75rem 1.25rem 0.75rem;
+  }
+  .tiles {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+    padding: 0 1rem 1rem;
+  }
+  .tile {
+    background: var(--tile);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    min-height: 104px;
+    padding: 0.8rem 1rem;
+    display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start;
+    text-align: left;
+    transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 160ms;
+  }
+  .tile:active { transform: scale(0.97); box-shadow: 0 1px 2px rgba(11,23,48,0.1); }
+  .tile svg { width: 40px; height: 40px; stroke: var(--navy); }
+  .tile.urgent svg { stroke: var(--alert); }
+  .tile-label { font-size: 1.3125rem; font-weight: 800; line-height: 1.1; margin-top: 0.5rem; }
+
+  .foot {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.5rem 1.25rem calc(var(--safe-bottom) + 1.5rem);
+    color: var(--ink-soft); font-size: 0.9375rem;
+  }
+  .foot .offline { display: flex; align-items: center; gap: 0.4rem; }
+  .foot .offline i { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); display: inline-block; }
+  .link-btn {
+    background: none; border: none; color: var(--ink-soft);
+    text-decoration: underline; text-underline-offset: 3px;
+    padding: 0.75rem 0.25rem; font-size: 0.9375rem;
+  }
+
+  /* ---------- Sign (signature: arrivals-hall pickup board) ---------- */
+  .sign {
+    position: fixed; inset: 0; z-index: 10;
+    background: var(--navy);
+    padding: calc(var(--safe-top) + 0.75rem) 0.75rem calc(var(--safe-bottom) + 0.75rem);
+    display: flex; flex-direction: column; gap: 0.75rem;
+  }
+  .sign-board {
+    flex: 1;
+    background: #fff;
+    border-radius: 18px;
+    padding: 1.5rem 1.25rem;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 1.25rem;
+    animation: board-in 280ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes board-in { from { transform: scale(0.96); filter: blur(4px); } to { transform: none; filter: none; } }
+  @media (prefers-reduced-motion: reduce) { .sign-board, .tile { animation: none; transition: none; } }
+  .sign-id {
+    font-size: clamp(2.25rem, 10vw, 3.25rem);
+    font-weight: 900;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+  .sign-en {
+    font-size: 1.5rem; font-weight: 600; color: var(--ink-soft);
+    padding-top: 1rem; border-top: 3px solid var(--navy);
+    text-wrap: balance;
+  }
+  .sign-detail {
+    background: var(--ground);
+    border-radius: 14px;
+    padding: 1rem;
+  }
+  .sign-detail + .sign-detail { margin-top: -0.5rem; }
+  .sign-detail dt { font-size: 1.0625rem; font-weight: 700; color: var(--ink-soft); }
+  .sign-detail dd { font-size: clamp(1.75rem, 8vw, 2.5rem); font-weight: 800; line-height: 1.12; margin-top: 0.2rem; overflow-wrap: anywhere; }
+  .sign-detail dd.long { font-size: 1.5rem; font-weight: 700; line-height: 1.3; }
+  .sign-detail a { color: var(--sky-ink); text-decoration: none; }
+  .papers-title { font-size: 1.5rem; font-weight: 800; color: var(--ink); }
+  .papers-title span { display: block; font-size: 1.0625rem; font-weight: 600; color: var(--ink-soft); }
+  .paper-img { width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--line); background: #fff; }
+  .paper-empty { background: var(--ground); border-radius: 14px; padding: 1rem; color: var(--ink-soft); font-size: 1.125rem; font-weight: 600; }
+  .steps-bar { display: grid; grid-template-columns: 1fr 1.6fr; gap: 0.75rem; }
+  .steps-bar .back { background: rgba(255,255,255,0.12); color: #fff; }
+  .steps-bar .back svg { stroke: #fff; }
+  .step-count { font-size: 1.25rem; font-weight: 800; color: var(--sky-ink); }
+  .step-dots { display: flex; gap: 6px; }
+  .step-dots i { height: 6px; flex: 1; border-radius: 3px; background: var(--line); }
+  .step-dots i.on { background: var(--navy); }
+  .step-text { font-size: clamp(2rem, 9vw, 2.75rem); font-weight: 850; line-height: 1.15; letter-spacing: -0.015em; color: var(--ink); text-wrap: pretty; }
+  .step-papers { min-height: 64px; border-radius: 16px; border: 2px solid var(--navy); background: #fff; color: var(--navy); font-size: 1.25rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+  .step-papers svg { width: 26px; height: 26px; stroke: var(--navy); }
+  .sign-foot { margin-top: auto; font-size: 1.125rem; color: var(--ink-soft); font-weight: 600; }
+  .sign-foot b { color: var(--ink); }
+  .back {
+    min-height: 72px;
+    background: var(--sky); color: var(--navy);
+    border: none; border-radius: 18px;
+    font-size: 1.5rem; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  }
+  .back svg { width: 28px; height: 28px; stroke: var(--navy); }
+
+  /* ---------- Setup ---------- */
+  .setup { padding: calc(var(--safe-top) + 1.25rem) 1.25rem calc(var(--safe-bottom) + 2rem); }
+  .setup h1 { font-size: 1.75rem; font-weight: 800; color: var(--navy); letter-spacing: -0.01em; }
+  .setup .lede { color: var(--ink-soft); font-size: 1rem; margin: 0.5rem 0 1.25rem; max-width: 60ch; }
+  .group { background: var(--tile); border-radius: var(--radius); padding: 1rem; box-shadow: var(--shadow); margin-bottom: 1rem; }
+  .group h2 { font-size: 1.125rem; font-weight: 800; margin-bottom: 0.75rem; }
+  .field { display: block; margin-bottom: 0.875rem; }
+  .field:last-child { margin-bottom: 0; }
+  .field span { display: block; font-weight: 700; font-size: 0.9375rem; margin-bottom: 0.35rem; }
+  .field small { display: block; color: var(--ink-soft); font-size: 0.875rem; margin-top: 0.3rem; }
+  .field input, .field textarea {
+    width: 100%; border: 1.5px solid var(--line); border-radius: 12px;
+    padding: 0.8rem 0.9rem; font-size: 1.0625rem; background: #fbfcfe;
+  }
+  .field input:focus, .field textarea:focus { outline: none; border-color: var(--sky-ink); box-shadow: 0 0 0 3px rgba(56,189,248,0.35); }
+  .field textarea { min-height: 84px; resize: vertical; }
+  .field textarea.tall { min-height: 260px; line-height: 1.45; }
+  .doc-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+  .doc-row img { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); }
+  ::placeholder { color: #66738b; }
+  .photo-row { display: flex; align-items: center; gap: 1rem; }
+  .photo-row .son-photo { width: 72px; height: 72px; }
+  .btn {
+    min-height: 56px; border-radius: 14px; border: none;
+    font-size: 1.125rem; font-weight: 800; padding: 0 1.25rem;
+  }
+  .btn.primary { background: var(--navy); color: #fff; width: 100%; }
+  .btn.secondary { background: var(--tile); color: var(--navy); border: 1.5px solid var(--line); }
+  .btn-row { display: grid; gap: 0.75rem; margin-top: 1.25rem; }
+  .note { font-size: 0.9375rem; color: var(--ink-soft); margin-top: 0.75rem; }
+  .toast {
+    position: fixed; left: 50%; bottom: calc(var(--safe-bottom) + 1.25rem); transform: translateX(-50%);
+    background: var(--navy); color: #fff; padding: 0.9rem 1.1rem; border-radius: 14px;
+    font-weight: 700; box-shadow: 0 6px 18px rgba(11,23,48,0.25); z-index: 20;
+    width: min(90vw, 440px); text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- Icon sprite: one stroke family -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></symbol>
+    <symbol id="i-lost" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-5.6-7-11a7 7 0 0 1 14 0c0 5.4-7 11-7 11z"/><path d="M9.8 8.2a2.3 2.3 0 0 1 4.4.9c0 1.5-2.2 2-2.2 3.2"/><path d="M12 15.2h.01"/></symbol>
+    <symbol id="i-bed" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/></symbol>
+    <symbol id="i-medic" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 7.5v9M7.5 12h9"/></symbol>
+    <symbol id="i-chair" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="3.5" r="1.5"/><path d="M11 6.5V13h6l2.5 5.5"/><path d="M11 9.5h5"/><path d="M8 10.2a6 6 0 1 0 8.4 7.3"/></symbol>
+    <symbol id="i-toilet" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h7v8H5z"/><path d="M3 11h17a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5z"/><path d="M8 16l-1 5h9l-1-5"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></symbol>
+    <symbol id="i-steps" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 6h11M10 12h11M10 18h11"/><path d="M4 5l1.5-1V9"/><path d="M3.5 13.5a1.4 1.4 0 0 1 2.6.6c0 .9-2.6 1.9-2.6 2.9h2.8"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-5.6-7-11a7 7 0 0 1 14 0c0 5.4-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+  </defs>
+</svg>
+
+<!-- ===== Main card ===== -->
+<main id="card" class="wrap" hidden>
+  <section class="band" aria-labelledby="spot">
+    <p class="band-label">Wait here</p>
+    <h1 class="band-spot" id="spot"></h1>
+    <p class="band-note" id="band-note"></p>
+  </section>
+
+  <a class="son" id="son" href="#">
+    <span id="son-photo-slot"></span>
+    <div>
+      <p class="son-who">Meeting you</p>
+      <p class="son-name" id="son-name"></p>
+      <p class="son-phone num" id="son-phone"></p>
+    </div>
+  </a>
+
+  <div class="quick">
+    <button type="button" class="go" id="steps-btn"><svg aria-hidden="true"><use href="#i-steps"/></svg>Airport steps</button>
+    <button type="button" id="papers-btn"><svg aria-hidden="true"><use href="#i-doc"/></svg>My papers</button>
+  </div>
+  <button type="button" class="send-loc" id="send-loc" hidden><svg aria-hidden="true"><use href="#i-send"/></svg><span id="send-loc-label">Send my location</span></button>
+
+  <h2 class="help-title">Need help? Tap one and show it.</h2>
+  <div class="tiles" id="tiles"></div>
+
+  <footer class="foot">
+    <span class="offline"><i></i> Works without internet</span>
+    <button class="link-btn" id="edit-btn" type="button">Edit details</button>
+  </footer>
+</main>
+
+<!-- ===== Sign (full screen) ===== -->
+<section id="sign" class="sign" hidden aria-live="polite">
+  <div class="sign-board" id="sign-board"></div>
+  <button class="back" id="sign-back" type="button"><svg><use href="#i-back"/></svg>Back</button>
+</section>
+
+<!-- ===== Setup ===== -->
+<main id="setup" class="setup wrap" hidden>
+  <h1>Set up the travel card</h1>
+  <p class="lede">Fill this in on Dad's phone before he leaves. It's saved only on this phone and never uploaded. Open the card once with internet, and after that it works with none.</p>
+
+  <form id="form" autocomplete="off">
+    <div class="group">
+      <h2>Traveller</h2>
+      <label class="field"><span>Traveller's name</span><input name="dadName" placeholder="e.g. Robert Smith"></label>
+    </div>
+
+    <div class="group">
+      <h2>Who's meeting him</h2>
+      <label class="field"><span>Name</span><input name="sonName" placeholder="e.g. Tom"></label>
+      <label class="field"><span>Phone number</span><input name="sonPhone" type="tel" inputmode="tel" placeholder="+61 4xx xxx xxx"><small>Start with +61 so staff in Bali can call it.</small></label>
+      <div class="field">
+        <span>Photo</span>
+        <div class="photo-row">
+          <span id="photo-preview-slot"></span>
+          <label class="btn secondary" style="display:inline-flex;align-items:center;">Choose photo<input type="file" id="photo-input" accept="image/*" hidden></label>
+          <button type="button" class="link-btn" id="photo-clear" hidden>Remove</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Meeting point</h2>
+      <label class="field"><span>Where to wait</span><input name="spot" placeholder="e.g. Starbucks, arrivals hall"><small>Shown in huge text at the top of the card.</small></label>
+      <label class="field"><span>Directions (optional)</span><input name="spotHint" placeholder="e.g. Turn right after customs"></label>
+    </div>
+
+    <div class="group">
+      <h2>Hotel</h2>
+      <label class="field"><span>Hotel name</span><input name="hotelName" placeholder="e.g. Hotel name"></label>
+      <label class="field"><span>Hotel address</span><textarea name="hotelAddr" placeholder="Street, area, Bali"></textarea></label>
+    </div>
+
+    <div class="group">
+      <h2>Airport steps</h2>
+      <label class="field"><span>One step per line</span><textarea name="steps" class="tall"></textarea><small>Shown one at a time with a big Next button. {spot} and {son} fill in the meeting point and name. Steps that mention papers, visa or QR get a "Show my papers" button.</small></label>
+      <button type="button" class="link-btn" id="steps-reset">Reset to the default steps</button>
+    </div>
+
+    <div class="group">
+      <h2>My papers</h2>
+      <p class="note" style="margin:0 0 .75rem">Add screenshots of the e-VOA visa, the All Indonesia arrival card QR code and the Bali tourist levy receipt. They're shown full size for officials, with no internet needed.</p>
+      <div class="field"><span>Visa (e-VOA)</span><div class="doc-row"><span id="docVisa-prev"></span><label class="btn secondary" style="display:inline-flex;align-items:center;">Choose image<input type="file" accept="image/*" data-doc="docVisa" hidden></label><button type="button" class="link-btn" data-clear="docVisa" hidden>Remove</button></div></div>
+      <div class="field"><span>Arrival card QR code</span><div class="doc-row"><span id="docArrival-prev"></span><label class="btn secondary" style="display:inline-flex;align-items:center;">Choose image<input type="file" accept="image/*" data-doc="docArrival" hidden></label><button type="button" class="link-btn" data-clear="docArrival" hidden>Remove</button></div></div>
+      <div class="field"><span>Tourist levy receipt</span><div class="doc-row"><span id="docLevy-prev"></span><label class="btn secondary" style="display:inline-flex;align-items:center;">Choose image<input type="file" accept="image/*" data-doc="docLevy" hidden></label><button type="button" class="link-btn" data-clear="docLevy" hidden>Remove</button></div></div>
+    </div>
+
+    <div class="group">
+      <h2>Backup contact &amp; health</h2>
+      <label class="field"><span>Backup contact name</span><input name="backupName" placeholder="e.g. Josh"></label>
+      <label class="field"><span>Backup phone</span><input name="backupPhone" type="tel" inputmode="tel" placeholder="+61 4xx xxx xxx"></label>
+      <label class="field"><span>Medical notes for a doctor (optional)</span><textarea name="medical" placeholder="Medicines, allergies, conditions"></textarea></label>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn primary" type="submit">Save card</button>
+      <button class="btn secondary" type="button" id="link-btn">Copy setup link</button>
+      <button class="btn secondary" type="button" id="cancel-btn" hidden>Cancel</button>
+    </div>
+    <p class="note">"Copy setup link" lets you fill this in on your own phone and send it to Dad's. Everything except the photo and papers travels inside the link. Only send it in a private message.</p>
+  </form>
+</main>
+
+<!-- ===== Airport steps (full screen) ===== -->
+<section id="steps" class="sign" hidden aria-live="polite">
+  <div class="sign-board" id="steps-board"></div>
+  <div class="steps-bar">
+    <button class="back" id="steps-prev" type="button"><svg><use href="#i-back"/></svg>Back</button>
+    <button class="back" id="steps-next" type="button" style="background:var(--sky);color:var(--navy)">Next<svg style="stroke:var(--navy)"><use href="#i-next"/></svg></button>
+  </div>
+</section>
+
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+(function () {
+  const KEY = 'fp-travel-card-v1';
+  const $ = (id) => document.getElementById(id);
+  const FIELDS = ['dadName','sonName','sonPhone','spot','spotHint','hotelName','hotelAddr','backupName','backupPhone','medical','steps'];
+  const DOCS = ['docVisa', 'docArrival', 'docLevy'];
+  const DEFAULT_STEPS = [
+    'Follow the signs that say ARRIVAL. Walk with the other passengers.',
+    'In the big immigration hall, walk past the first counter. You already have your visa.',
+    'Go to the far right-hand side of the room. Join the line for seniors and families.',
+    'Show the officer your passport and your papers. Wait until they give everything back.',
+    'Collect your suitcase from the belt.',
+    'At customs, show your arrival card QR code. Put your bags through the scanner if they ask.',
+    'Walk out through the glass doors. Keep walking straight ahead.',
+    'You will pass money changers and cash machines (ATMs). Do not stop. Keep going straight.',
+    'You will see a big crowd of drivers holding name signs. You do not need them. Keep walking.',
+    'If someone offers you a taxi, say: Tidak, terima kasih. (No, thank you.)',
+    'Look for WHSmith, a shop selling books and snacks. Walk past it.',
+    'Look for Starbucks: a green sign with a round white logo. It is on this ground floor. Do not go upstairs.',
+    'Wait at {spot}. Sit down if you can. {son} will find you.',
+    'Cannot find it? Tap Done, then tap I am lost, and show the screen to any staff member.'
+].join('\n');
+
+  /* ---------- storage ---------- */
+  function load() {
+    try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { return null; }
+  }
+  function save(data) {
+    try { localStorage.setItem(KEY, JSON.stringify(data)); return true; }
+    catch (e) { toast('Could not save. The photo may be too large. Try another photo.'); return false; }
+  }
+  let data = load();
+  let pendingPhoto;
+
+  /* ---------- helpers ---------- */
+  const tel = (n) => 'tel:' + String(n || '').replace(/[^\d+]/g, '');
+  function el(tag, attrs, ...kids) {
+    const n = document.createElement(tag);
+    for (const k in (attrs || {})) {
+      if (k === 'class') n.className = attrs[k];
+      else if (k === 'text') n.textContent = attrs[k];
+      else n.setAttribute(k, attrs[k]);
+    }
+    kids.forEach(k => k && n.append(k));
+    return n;
+  }
+  function icon(id) {
+    const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    s.setAttribute('aria-hidden', 'true');
+    const u = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    u.setAttribute('href', '#' + id);
+    s.append(u);
+    return s;
+  }
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.hidden = false;
+    clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), 2600);
+  }
+  function first(name) { return (name || '').trim().split(/\s+/)[0] || ''; }
+
+  /* ---------- phrases (Indonesian first, for staff) ---------- */
+  function phrases(d) {
+    const son = d.sonName || 'my son';
+    return [
+      { id: 'call', label: 'Call my son', icon: 'i-phone',
+        idn: 'HP saya tidak ada sinyal. Tolong telepon anak saya.',
+        en: 'My phone has no signal. Please call my son.',
+        details: [
+          d.sonPhone && { dt: 'Anak saya / My son: ' + (d.sonName || ''), dd: d.sonPhone, href: tel(d.sonPhone), num: true },
+          d.backupPhone && { dt: 'Atau / Or: ' + (d.backupName || 'family'), dd: d.backupPhone, href: tel(d.backupPhone), num: true }
+        ] },
+      { id: 'lost', label: 'I am lost', icon: 'i-lost',
+        idn: 'Saya tersesat. Tolong antar saya ke tempat ini.',
+        en: 'I am lost. Please take me to this place.',
+        details: [
+          d.spot && { dt: 'Tempat / Place', dd: d.spot },
+          d.spotHint && { dt: 'Petunjuk / Directions', dd: d.spotHint, long: true },
+          d.sonPhone && { dt: 'Anak saya / My son', dd: d.sonPhone, href: tel(d.sonPhone), num: true }
+        ] },
+      { id: 'hotel', label: 'My hotel', icon: 'i-bed',
+        idn: 'Tolong antar saya ke hotel ini.',
+        en: 'Please take me to this hotel.',
+        details: [
+          d.hotelName && { dt: 'Hotel', dd: d.hotelName },
+          d.hotelAddr && { dt: 'Alamat / Address', dd: d.hotelAddr, long: true }
+        ] },
+      { id: 'doctor', label: 'I need a doctor', icon: 'i-medic', urgent: true,
+        idn: 'Saya perlu dokter. Tolong panggil ambulans.',
+        en: 'I need a doctor. Please call an ambulance.',
+        details: [
+          { dt: 'Darurat / Emergency', dd: '112', href: 'tel:112', num: true },
+          d.medical && { dt: 'Catatan medis / Medical notes', dd: d.medical, long: true },
+          d.sonPhone && { dt: 'Anak saya / My son', dd: d.sonPhone, href: tel(d.sonPhone), num: true }
+        ] },
+      { id: 'chair', label: 'Wheelchair', icon: 'i-chair',
+        idn: 'Saya perlu kursi roda, tolong.',
+        en: 'I need a wheelchair, please.', details: [] },
+      { id: 'toilet', label: 'Toilet', icon: 'i-toilet',
+        idn: 'Di mana toilet?',
+        en: 'Where is the toilet?', details: [] }
+    ];
+  }
+
+  /* ---------- render card ---------- */
+  function renderCard() {
+    const d = data;
+    $('spot').textContent = d.spot || 'Not set yet';
+    const nm = first(d.sonName);
+    $('band-note').innerHTML = '';
+    $('band-note').append(
+      document.createTextNode('Stay there. '),
+      el('strong', { text: nm || 'Family' }),
+      document.createTextNode(' will find you.')
+    );
+    if (d.spotHint) $('band-note').append(el('span', { style: 'display:block;font-weight:500;font-size:1.0625rem;color:#b9cbe8;margin-top:.35rem', text: d.spotHint }));
+
+    const slot = $('son-photo-slot'); slot.innerHTML = '';
+    if (d.photo) slot.append(el('img', { class: 'son-photo', src: d.photo, alt: d.sonName ? 'Photo of ' + d.sonName : 'Photo' }));
+    else {
+      const ph = el('span', { class: 'son-photo empty' }, icon('i-user'));
+      const sv = ph.firstChild; sv.setAttribute('width', '40'); sv.setAttribute('height', '40'); sv.style.stroke = 'currentColor';
+      slot.append(ph);
+    }
+    $('son-name').textContent = d.sonName || 'Not set';
+    $('son-phone').textContent = d.sonPhone || '';
+    $('son').href = d.sonPhone ? tel(d.sonPhone) : '#';
+
+    updateSendLoc();
+    const grid = $('tiles'); grid.innerHTML = '';
+    phrases(d).forEach(p => {
+      const b = el('button', { class: 'tile' + (p.urgent ? ' urgent' : ''), type: 'button', 'aria-label': p.label + ': show a sign to staff' },
+        icon(p.icon), el('span', { class: 'tile-label', text: p.label }));
+      b.addEventListener('click', () => openSign(p.id));
+      grid.append(b);
+    });
+  }
+
+  /* ---------- sign ---------- */
+  let wakeLock = null;
+  async function keepAwake(on) {
+    try {
+      if (on && 'wakeLock' in navigator && !wakeLock) wakeLock = await navigator.wakeLock.request('screen');
+      else if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+    } catch (e) { /* not supported or refused: fine */ }
+  }
+  function openSign(id, fromHistory) {
+    const p = phrases(data).find(x => x.id === id); if (!p) return;
+    const board = $('sign-board'); board.innerHTML = '';
+    board.append(el('p', { class: 'sign-id', lang: 'id', text: p.idn }), el('p', { class: 'sign-en', text: p.en }));
+    const dl = p.details.filter(Boolean);
+    dl.forEach(x => {
+      const dd = el('dd', { class: (x.long ? 'long' : '') + (x.num ? ' num' : '') });
+      if (x.href) dd.append(el('a', { href: x.href, text: x.dd })); else dd.textContent = x.dd;
+      board.append(el('dl', { class: 'sign-detail' }, el('dt', { text: x.dt }), dd));
+    });
+    const foot = el('p', { class: 'sign-foot' });
+    if (data.dadName) foot.append('Nama saya / My name: ', el('b', { text: data.dadName }), el('br'));
+    foot.append('Saya tidak bisa berbahasa Indonesia. / I don’t speak Indonesian.');
+    board.append(foot);
+    board.scrollTop = 0;
+    showOverlay('sign', fromHistory, { overlay: 'sign', sign: id });
+    $('sign-back').focus({ preventScroll: true });
+  }
+  function closeSign() {
+    $('sign').hidden = true; $('steps').hidden = true; $('card').removeAttribute('aria-hidden');
+    keepAwake(false);
+  }
+  function closeOverlay() { if (history.state && history.state.overlay) history.back(); else closeSign(); }
+  $('sign-back').addEventListener('click', closeOverlay);
+  window.addEventListener('popstate', (e) => {
+    const st = e.state || {};
+    if (st.sign) openSign(st.sign, true);
+    else if (st.overlay === 'papers') openPapers(true);
+    else if (st.overlay === 'steps') openSteps(true);
+    else closeSign();
+  });
+
+  /* ---------- my papers ---------- */
+  function openPapers(fromHistory) {
+    const board = $('sign-board'); board.innerHTML = '';
+    board.append(el('p', { class: 'papers-title', text: 'Dokumen saya' }, el('span', { text: 'My papers' })));
+    const items = [['docVisa', 'Visa (e-VOA)'], ['docArrival', 'Kartu kedatangan / Arrival card'], ['docLevy', 'Pungutan wisata Bali / Bali tourist levy']];
+    let any = false;
+    items.forEach(([k, label]) => {
+      if (!data[k]) return; any = true;
+      board.append(el('p', { class: 'sign-en', style: 'border:none;padding:0', text: label }), el('img', { class: 'paper-img', src: data[k], alt: label }));
+    });
+    if (!any) board.append(el('p', { class: 'paper-empty', text: 'No papers added yet. Ask family to add a screenshot of the visa and arrival card in Edit details.' }));
+    showOverlay('sign', fromHistory, { overlay: 'papers' });
+  }
+
+  /* ---------- airport steps ---------- */
+  let stepIndex = 0;
+  try { stepIndex = +localStorage.getItem(KEY + ':step') || 0; } catch (e) {}
+  function stepList() {
+    const raw = (data.steps && data.steps.trim()) ? data.steps : DEFAULT_STEPS;
+    return raw.split(/\n+/).map(x => x.trim()).filter(Boolean)
+      .map(x => x.replace(/\{spot\}/g, data.spot || 'the meeting point').replace(/\{son\}/g, first(data.sonName) || 'Family'));
+  }
+  function renderStep() {
+    const list = stepList();
+    stepIndex = Math.min(Math.max(stepIndex, 0), list.length - 1);
+    try { localStorage.setItem(KEY + ':step', stepIndex); } catch (e) {}
+    const board = $('steps-board'); board.innerHTML = '';
+    const dots = el('div', { class: 'step-dots', 'aria-hidden': 'true' });
+    list.forEach((_, i) => dots.append(el('i', { class: i <= stepIndex ? 'on' : '' })));
+    board.append(el('p', { class: 'step-count', text: 'Step ' + (stepIndex + 1) + ' of ' + list.length }), dots, el('p', { class: 'step-text', text: list[stepIndex] }));
+    if (/papers|visa|qr/i.test(list[stepIndex])) {
+      const b = el('button', { class: 'step-papers', type: 'button' }, icon('i-doc'), el('span', { text: 'Show my papers' }));
+      b.addEventListener('click', () => openPapers());
+      board.append(b);
+    }
+    const last = stepIndex === list.length - 1;
+    $('steps-prev').lastChild.textContent = stepIndex === 0 ? 'Close' : 'Back';
+    $('steps-next').firstChild.textContent = last ? 'Done' : 'Next';
+    board.scrollTop = 0;
+  }
+  function openSteps(fromHistory) { renderStep(); showOverlay('steps', fromHistory, { overlay: 'steps' }); }
+  $('steps-next').addEventListener('click', () => {
+    if (stepIndex >= stepList().length - 1) { stepIndex = 0; try { localStorage.setItem(KEY + ':step', 0); } catch (e) {} closeOverlay(); return; }
+    stepIndex++; renderStep();
+  });
+  $('steps-prev').addEventListener('click', () => { if (stepIndex === 0) closeOverlay(); else { stepIndex--; renderStep(); } });
+  function showOverlay(id, fromHistory, state) {
+    $('sign').hidden = id !== 'sign'; $('steps').hidden = id !== 'steps';
+    $('card').setAttribute('aria-hidden', 'true');
+    $('toast').hidden = true; keepAwake(true);
+    if (!fromHistory) history.pushState(state, '');
+  }
+  $('steps-btn').addEventListener('click', () => openSteps());
+  $('papers-btn').addEventListener('click', () => openPapers());
+
+  /* ---------- send location (only when online, e.g. with an eSIM) ---------- */
+  function updateSendLoc() {
+    const b = $('send-loc');
+    b.hidden = !(navigator.onLine && data && data.sonPhone);
+    $('send-loc-label').textContent = 'Send my location to ' + (first(data && data.sonName) || 'family');
+  }
+  window.addEventListener('online', () => data && updateSendLoc());
+  window.addEventListener('offline', () => data && updateSendLoc());
+  $('send-loc').addEventListener('click', () => {
+    if (!('geolocation' in navigator)) return toast('This phone cannot find its location.');
+    $('send-loc-label').textContent = 'Finding where you are…';
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const { latitude: la, longitude: lo } = pos.coords;
+      const msg = 'I am here: https://maps.google.com/?q=' + la.toFixed(6) + ',' + lo.toFixed(6) + (data.spot ? ' (meeting point: ' + data.spot + ')' : '');
+      const num = String(data.sonPhone).replace(/[^\d]/g, '');
+      updateSendLoc();
+      location.href = 'https://wa.me/' + num + '?text=' + encodeURIComponent(msg);
+    }, () => { updateSendLoc(); toast('Could not find your location. Try again near a window.'); }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 });
+  });
+
+  /* ---------- setup ---------- */
+  const form = $('form');
+  function fillForm(d) {
+    FIELDS.forEach(f => { form.elements[f].value = (d && d[f]) || ''; });
+    if (!form.elements.steps.value) form.elements.steps.value = DEFAULT_STEPS;
+    pendingPhoto = d && d.photo;
+    showPhotoPreview();
+    DOCS.forEach(k => { pendingDocs[k] = (d && d[k]) || null; showDoc(k); });
+  }
+  const pendingDocs = {};
+  function showDoc(k) {
+    const slot = $(k + '-prev'); slot.innerHTML = '';
+    if (pendingDocs[k]) slot.append(el('img', { src: pendingDocs[k], alt: 'Chosen image' }));
+    form.querySelector('[data-clear=' + k + ']').hidden = !pendingDocs[k];
+  }
+  form.querySelectorAll('[data-doc]').forEach(inp => inp.addEventListener('change', (e) => {
+    const k = inp.dataset.doc, file = e.target.files && e.target.files[0]; if (!file) return;
+    const url = URL.createObjectURL(file), im = new Image();
+    im.onload = () => {
+      const max = 1100, sc = Math.min(1, max / Math.max(im.width, im.height));
+      const c = document.createElement('canvas'); c.width = Math.round(im.width * sc); c.height = Math.round(im.height * sc);
+      const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height);
+      pendingDocs[k] = c.toDataURL('image/jpeg', 0.9); URL.revokeObjectURL(url); showDoc(k);
+    };
+    im.onerror = () => toast('That image could not be opened. Try another.');
+    im.src = url;
+  }));
+  form.querySelectorAll('[data-clear]').forEach(b => b.addEventListener('click', () => { pendingDocs[b.dataset.clear] = null; showDoc(b.dataset.clear); }));
+  $('steps-reset').addEventListener('click', () => { form.elements.steps.value = DEFAULT_STEPS; toast('Default steps restored. Tap Save card to keep them.'); });
+  function showPhotoPreview() {
+    const slot = $('photo-preview-slot'); slot.innerHTML = '';
+    if (pendingPhoto) slot.append(el('img', { class: 'son-photo', src: pendingPhoto, alt: 'Chosen photo' }));
+    $('photo-clear').hidden = !pendingPhoto;
+  }
+  function readForm() {
+    const d = {};
+    FIELDS.forEach(f => { d[f] = form.elements[f].value.trim(); });
+    return d;
+  }
+  $('photo-input').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0]; if (!file) return;
+    const url = URL.createObjectURL(file);
+    const im = new Image();
+    im.onload = () => {
+      const s = 360, c = document.createElement('canvas'); c.width = c.height = s;
+      const side = Math.min(im.width, im.height);
+      c.getContext('2d').drawImage(im, (im.width - side) / 2, (im.height - side) / 2, side, side, 0, 0, s, s);
+      pendingPhoto = c.toDataURL('image/jpeg', 0.82);
+      URL.revokeObjectURL(url); showPhotoPreview();
+    };
+    im.onerror = () => toast('That photo could not be opened. Try another.');
+    im.src = url;
+  });
+  $('photo-clear').addEventListener('click', () => { pendingPhoto = null; $('photo-input').value = ''; showPhotoPreview(); });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const d = readForm(); d.photo = pendingPhoto || null;
+    DOCS.forEach(k => { d[k] = pendingDocs[k] || null; });
+    if (d.steps.trim() === DEFAULT_STEPS) d.steps = '';
+    if (!d.spot || !d.sonName || !d.sonPhone) { toast('Add at least the meeting point, name and phone number.'); return; }
+    if (save(d)) { data = d; show('card'); toast('Saved on this phone.'); }
+  });
+  $('cancel-btn').addEventListener('click', () => show('card'));
+  $('edit-btn').addEventListener('click', () => { fillForm(data); show('setup'); });
+
+  // Setup link: details travel in the URL fragment, which browsers never send to the server.
+  function b64e(s) { return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+  function b64d(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); return decodeURIComponent(escape(atob(s))); }
+  $('link-btn').addEventListener('click', async () => {
+    const link = location.href.split('#')[0] + '#setup=' + b64e(JSON.stringify(readForm()));
+    try { await navigator.clipboard.writeText(link); toast('Link copied. Open it on Dad’s phone, then tap Save.'); }
+    catch (e) { prompt('Copy this link:', link); }
+  });
+  function importFromHash() {
+    const m = location.hash.match(/#setup=([\w-]+)/); if (!m) return null;
+    history.replaceState(null, '', location.pathname + location.search);
+    try { return JSON.parse(b64d(m[1])); } catch (e) { toast('That setup link is damaged.'); return null; }
+  }
+
+  /* ---------- views ---------- */
+  function show(view) {
+    $('card').hidden = view !== 'card';
+    $('setup').hidden = view !== 'setup';
+    $('cancel-btn').hidden = !data;
+    if (view === 'card') renderCard();
+    window.scrollTo(0, 0);
+  }
+
+  const imported = importFromHash();
+  if (imported) {
+    fillForm(Object.assign({}, data || {}, imported, { photo: data && data.photo, docVisa: data && data.docVisa, docArrival: data && data.docArrival, docLevy: data && data.docLevy }));
+    show('setup');
+    toast('Details loaded. Add a photo if you like, then tap Save card.');
+  } else if (data) show('card');
+  else { fillForm(null); show('setup'); }
+
+  /* ---------- offline ---------- */
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('card-sw.js').catch(() => {}));
+  }
+})();
+</script>
+</body>
+</html>

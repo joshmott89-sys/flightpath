@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f19">
+<meta name="robots" content="noindex">
+<title>Bali Meetup</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root {
+    --bg: #0b0f19;
+    --card: rgba(25, 33, 50, 0.72);
+    --card-solid: #161e2e;
+    --line: rgba(255, 255, 255, 0.09);
+    --text: #ffffff;
+    --text-2: #a3b0c4;
+    --a: #38bdf8;        /* traveller A (Dad) */
+    --b: #c4b5fd;        /* traveller B (brother) */
+    --meet: #ffffff;
+    --warn: #fbbf24;
+    --ok: #34d399;
+    --radius: 22px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.45; min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--a); color: var(--bg); }
+  :focus-visible { outline: 3px solid var(--a); outline-offset: 3px; border-radius: 10px; }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  [hidden] { display: none !important; }
+  .num { font-variant-numeric: tabular-nums; }
+  .wrap { max-width: 480px; margin: 0 auto; padding: calc(var(--safe-top) + 14px) 16px calc(var(--safe-bottom) + 28px); display: flex; flex-direction: column; gap: 14px; }
+
+  header { display: flex; justify-content: space-between; align-items: baseline; padding: 2px 4px; }
+  header h1 { font-size: 1.375rem; font-weight: 750; letter-spacing: -0.01em; }
+  header .clock { color: var(--text-2); font-size: 0.9375rem; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+
+  /* Status sentence */
+  .status p { font-size: 1.3125rem; font-weight: 600; line-height: 1.35; text-wrap: pretty; }
+  .status p + p { margin-top: 10px; }
+  .status .who-a { color: var(--a); font-weight: 750; }
+  .status .who-b { color: var(--b); font-weight: 750; }
+  .status .meet-line { font-size: 1.0625rem; font-weight: 500; color: var(--text-2); padding-top: 12px; border-top: 1px solid var(--line); margin-top: 14px; }
+  .status .meet-line b { color: var(--text); font-weight: 700; }
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+  .btn {
+    min-height: 50px; border-radius: 14px; border: 1px solid var(--line);
+    background: rgba(255,255,255,0.06); font-weight: 700; font-size: 1rem;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    text-decoration: none; color: var(--text); padding: 0 14px;
+  }
+  .btn svg { width: 20px; height: 20px; stroke: currentColor; flex: none; }
+  .btn.primary { background: var(--a); color: var(--bg); border-color: transparent; }
+  .btn:active { transform: scale(0.98); }
+
+  /* Map */
+  .map-card { padding: 0; overflow: hidden; position: relative; height: 300px; }
+  #map { width: 100%; height: 100%; background: #0d1422; }
+  .map-note {
+    position: absolute; left: 10px; bottom: 10px; z-index: 500;
+    background: rgba(11,15,25,0.82); border: 1px solid var(--line); border-radius: 10px;
+    padding: 5px 9px; font-size: 0.8125rem; color: var(--text-2);
+  }
+  .map-legend { position: absolute; right: 10px; top: 10px; z-index: 500; display: flex; flex-direction: column; gap: 4px; background: rgba(11,15,25,0.82); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; font-size: 0.8125rem; font-weight: 600; }
+  .map-legend span { display: flex; align-items: center; gap: 7px; }
+  .map-legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+  .map-off { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--text-2); }
+  .leaflet-container { font: inherit; }
+  .pin-label { background: rgba(11,15,25,0.9); border: 1px solid var(--line); color: #fff; font-weight: 700; font-size: 12px; padding: 2px 7px; border-radius: 8px; white-space: nowrap; }
+  .leaflet-tooltip.pin-label::before { display: none; }
+
+  /* Flights */
+  .flight { display: flex; flex-direction: column; gap: 12px; }
+  .flight-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .flight-who { font-size: 1.125rem; font-weight: 750; }
+  .flight-no { color: var(--text-2); font-size: 0.9375rem; margin-top: 1px; }
+  .badge { padding: 5px 10px; border-radius: 999px; font-size: 0.8125rem; font-weight: 700; white-space: nowrap; border: 1px solid currentColor; }
+  .badge.sched { color: var(--text-2); }
+  .badge.air { color: var(--ok); }
+  .badge.landed { color: var(--a); }
+  .badge.late { color: var(--warn); }
+  .route { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; }
+  .code { font-size: 1.625rem; font-weight: 800; letter-spacing: -0.02em; }
+  .track { position: relative; height: 4px; background: rgba(255,255,255,0.12); border-radius: 2px; }
+  .track-fill { position: absolute; inset: 0 auto 0 0; border-radius: 2px; }
+  .track-plane { position: absolute; top: 50%; width: 22px; height: 22px; transform: translate(-50%, -50%) rotate(90deg); }
+  .times { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .times div span { display: block; font-size: 0.8125rem; color: var(--text-2); font-weight: 600; }
+  .times div b { font-size: 1.0625rem; font-weight: 700; }
+  .flight-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .flight-tools .btn { min-height: 42px; font-size: 0.9375rem; padding: 0 12px; }
+  .late-ctl { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; color: var(--text-2); font-size: 0.875rem; font-weight: 600; }
+  .late-ctl button { width: 42px; height: 42px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,255,255,0.06); font-weight: 800; font-size: 1.125rem; }
+
+  /* Meetup */
+  .meet h2 { font-size: 1.0625rem; font-weight: 750; color: var(--text-2); }
+  .meet .spot { font-size: 1.625rem; font-weight: 800; line-height: 1.15; margin-top: 4px; letter-spacing: -0.01em; }
+  .meet .hint { color: var(--text-2); margin-top: 4px; }
+  .meet .dist { margin-top: 12px; font-weight: 700; color: var(--ok); }
+  .meet .actions { grid-template-columns: 1fr; }
+  .meet small { display: block; color: var(--text-2); font-size: 0.875rem; margin-top: 10px; }
+
+  .foot { display: flex; justify-content: space-between; color: var(--text-2); font-size: 0.875rem; padding: 0 4px; gap: 12px; }
+  .link-btn { background: none; border: none; color: var(--text-2); text-decoration: underline; text-underline-offset: 3px; padding: 10px 2px; font-size: 0.875rem; }
+
+  /* Setup */
+  .setup h1 { font-size: 1.625rem; font-weight: 800; }
+  .setup .lede { color: var(--text-2); margin-top: 6px; max-width: 62ch; }
+  .setup fieldset { border: none; }
+  .setup legend { font-size: 1.0625rem; font-weight: 750; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .setup legend i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .field { display: block; margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+  .field > span { display: block; font-size: 0.875rem; font-weight: 700; margin-bottom: 5px; color: #d5deeb; }
+  .field small { display: block; color: var(--text-2); font-size: 0.8125rem; margin-top: 4px; }
+  .field input, .field select {
+    width: 100%; min-height: 48px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.16);
+    background: rgba(255,255,255,0.05); padding: 0 12px; font-size: 1rem; color-scheme: dark;
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--a); box-shadow: 0 0 0 3px rgba(56,189,248,0.3); }
+  ::placeholder { color: #8090a8; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btn-col { display: grid; gap: 10px; }
+  .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-bottom) + 18px); width: min(90vw, 420px); text-align: center; background: #f4f7fb; color: var(--bg); font-weight: 700; padding: 12px 14px; border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 1000; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-plane" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L14 19v-5.5l8 2.5z"/></symbol>
+    <symbol id="i-find" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7"/></symbol>
+    <symbol id="i-me" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8z"/></symbol>
+    <symbol id="i-live" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3h7v7"/><path d="M10 14L21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></symbol>
+  </defs>
+</svg>
+
+<!-- ===== Main ===== -->
+<main id="main" class="wrap" hidden>
+  <header>
+    <h1>Bali Meetup</h1>
+    <span class="clock num" id="clock"></span>
+  </header>
+
+  <section class="card status" aria-live="polite">
+    <div id="status-lines"></div>
+    <p class="meet-line" id="meet-line"></p>
+  </section>
+
+  <section class="card map-card" aria-label="Map of both flights">
+    <div id="map"></div>
+    <div class="map-legend" id="legend"></div>
+    <div class="map-note" id="map-note">Positions estimated from schedule</div>
+    <div class="map-off" id="map-off" hidden>The map needs internet. Everything else on this page still works.</div>
+  </section>
+
+  <div id="flights" style="display:flex;flex-direction:column;gap:14px"></div>
+
+  <section class="card meet">
+    <h2>Meeting point</h2>
+    <p class="spot" id="meet-spot"></p>
+    <p class="hint" id="meet-hint"></p>
+    <p class="dist num" id="meet-dist" hidden></p>
+    <div class="actions">
+      <a class="btn primary" id="find-btn" href="https://www.google.com/android/find" target="_blank" rel="noopener"><svg><use href="#i-find"/></svg><span id="find-label">Find Dad's phone</span></a>
+      <a class="btn" id="maps-btn" href="https://www.google.com/maps" target="_blank" rel="noopener"><svg><use href="#i-me"/></svg><span id="maps-label">Dad's live location</span></a>
+      <button class="btn" id="me-btn" type="button"><svg><use href="#i-me"/></svg>Show my location</button>
+    </div>
+    <small><b>Live location</b> opens Google Maps. If Dad shares his location with you, he shows up there in real time whenever his phone has data, for example with an eSIM. <b>Find Hub</b> still works when his phone is offline, as long as Bluetooth is on. Sign in with his Google account, or use a tracker tag he has shared with you.</small>
+  </section>
+
+  <footer class="foot">
+    <span>Saved on this phone only</span>
+    <button class="link-btn" id="edit-btn" type="button">Edit flights</button>
+  </footer>
+</main>
+
+<!-- ===== Setup ===== -->
+<main id="setup" class="wrap setup" hidden>
+  <div>
+    <h1>Set up the meetup</h1>
+    <p class="lede">Enter both flights once. Use local times from the tickets. Details stay on this phone. Use "Copy share link" to send them to the others.</p>
+  </div>
+  <form id="form" autocomplete="off" style="display:flex;flex-direction:column;gap:14px">
+    <fieldset class="card">
+      <legend><i style="background:var(--a)"></i>First traveller</legend>
+      <div class="row2">
+        <label class="field"><span>Name</span><input name="aName" placeholder="Dad"></label>
+        <label class="field"><span>Flight</span><input name="aFlight" placeholder="e.g. QF45" autocapitalize="characters"></label>
+      </div>
+      <label class="field"><span>From</span><select name="aFrom"></select></label>
+      <label class="field"><span>Departs (local time where they leave)</span><input name="aDep" type="datetime-local"></label>
+      <label class="field"><span>Lands in Bali (Bali time)</span><input name="aArr" type="datetime-local"></label>
+    </fieldset>
+
+    <fieldset class="card">
+      <legend><i style="background:var(--b)"></i>Second traveller</legend>
+      <div class="row2">
+        <label class="field"><span>Name</span><input name="bName" placeholder="e.g. Tom"></label>
+        <label class="field"><span>Flight</span><input name="bFlight" placeholder="e.g. JQ37" autocapitalize="characters"></label>
+      </div>
+      <label class="field"><span>From</span><select name="bFrom"></select></label>
+      <label class="field"><span>Departs (local time where they leave)</span><input name="bDep" type="datetime-local"></label>
+      <label class="field"><span>Lands in Bali (Bali time)</span><input name="bArr" type="datetime-local"></label>
+    </fieldset>
+
+    <fieldset class="card">
+      <legend>Meeting point</legend>
+      <label class="field"><span>Where the first one waits</span><input name="spot" placeholder="e.g. Starbucks, arrivals hall"></label>
+      <label class="field"><span>Directions (optional)</span><input name="spotHint" placeholder="e.g. Turn right after customs"></label>
+      <div class="field">
+        <span>Pin on the map</span>
+        <button class="btn" type="button" id="pin-here" style="width:100%">Use my current location</button>
+        <small id="pin-status">Shown at Bali airport arrivals until you set it.</small>
+      </div>
+    </fieldset>
+
+    <div class="btn-col">
+      <button class="btn primary" type="submit">Save</button>
+      <button class="btn" type="button" id="share-btn">Copy share link</button>
+      <button class="btn" type="button" id="cancel-btn" hidden>Cancel</button>
+    </div>
+  </form>
+</main>
+
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+  const KEY = 'fp-meetup-v1';
+  const BALI_TZ = 'Asia/Makassar';
+  const DPS = { code: 'DPS', name: 'Bali', lat: -8.7482, lng: 115.1672 };
+  const DEFAULT_PIN = { lat: -8.7445, lng: 115.1665 }; // international arrivals, approximate
+  const AIRPORTS = {
+    PER: { code: 'PER', name: 'Perth', lat: -31.9403, lng: 115.9669, tz: 'Australia/Perth' },
+    MEL: { code: 'MEL', name: 'Melbourne', lat: -37.6690, lng: 144.8410, tz: 'Australia/Melbourne' },
+    SYD: { code: 'SYD', name: 'Sydney', lat: -33.9399, lng: 151.1753, tz: 'Australia/Sydney' },
+    BNE: { code: 'BNE', name: 'Brisbane', lat: -27.3842, lng: 153.1175, tz: 'Australia/Brisbane' },
+    ADL: { code: 'ADL', name: 'Adelaide', lat: -34.9450, lng: 138.5306, tz: 'Australia/Adelaide' },
+    DRW: { code: 'DRW', name: 'Darwin', lat: -12.4147, lng: 130.8767, tz: 'Australia/Darwin' }
+  };
+  const FIELDS = ['aName','aFlight','aFrom','aDep','aArr','bName','bFlight','bFrom','bDep','bArr','spot','spotHint'];
+  const OUT_OF_AIRPORT_MIN = 60; // rough allowance for immigration + bags
+  const $ = (id) => document.getElementById(id);
+
+  let data = null;
+  try { data = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+  let pin = data && data.pin;
+  let me = null, watchId = null;
+
+  /* ---------- time ---------- */
+  function tzOffset(ts, tz) {
+    const p = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(new Date(ts));
+    const g = (k) => +p.find(x => x.type === k).value;
+    return Date.UTC(g('year'), g('month') - 1, g('day'), g('hour'), g('minute'), g('second')) - ts;
+  }
+  function zonedToUtc(local, tz) {
+    if (!local) return NaN;
+    const [d, t] = local.split('T'); const [Y, M, D] = d.split('-').map(Number); const [h, m] = (t || '0:0').split(':').map(Number);
+    const naive = Date.UTC(Y, M - 1, D, h, m);
+    let guess = naive;
+    for (let i = 0; i < 3; i++) guess = naive - tzOffset(guess, tz);
+    return guess;
+  }
+  const fmtBali = (ts) => new Intl.DateTimeFormat('en-AU', { timeZone: BALI_TZ, hour: 'numeric', minute: '2-digit', hour12: true }).format(ts).replace(' ', '').toLowerCase();
+  const fmtBaliDay = (ts) => new Intl.DateTimeFormat('en-AU', { timeZone: BALI_TZ, weekday: 'short', day: 'numeric', month: 'short' }).format(ts);
+  function dur(ms) {
+    ms = Math.abs(ms); const m = Math.round(ms / 60000);
+    if (m < 60) return m + ' min';
+    const h = Math.floor(m / 60), r = m % 60;
+    if (h >= 24) { const dd = Math.floor(h / 24); return dd + (dd === 1 ? ' day ' : ' days ') + (h % 24) + 'h'; }
+    return h + 'h' + (r ? ' ' + r + 'm' : '');
+  }
+
+  /* ---------- geo ---------- */
+  const rad = (x) => x * Math.PI / 180, deg = (x) => x * 180 / Math.PI;
+  function slerp(a, b, f) {
+    const φ1 = rad(a.lat), λ1 = rad(a.lng), φ2 = rad(b.lat), λ2 = rad(b.lng);
+    const d = 2 * Math.asin(Math.sqrt(Math.sin((φ2 - φ1) / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin((λ2 - λ1) / 2) ** 2));
+    if (d === 0) return { lat: a.lat, lng: a.lng };
+    const A = Math.sin((1 - f) * d) / Math.sin(d), B = Math.sin(f * d) / Math.sin(d);
+    const x = A * Math.cos(φ1) * Math.cos(λ1) + B * Math.cos(φ2) * Math.cos(λ2);
+    const y = A * Math.cos(φ1) * Math.sin(λ1) + B * Math.cos(φ2) * Math.sin(λ2);
+    const z = A * Math.sin(φ1) + B * Math.sin(φ2);
+    return { lat: deg(Math.atan2(z, Math.hypot(x, y))), lng: deg(Math.atan2(y, x)) };
+  }
+  function metres(a, b) {
+    const R = 6371000, dφ = rad(b.lat - a.lat), dλ = rad(b.lng - a.lng);
+    const h = Math.sin(dφ / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dλ / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+
+  /* ---------- model ---------- */
+  function traveller(k) {
+    const from = AIRPORTS[data[k + 'From']] || AIRPORTS.PER;
+    const late = (data[k + 'Late'] || 0) * 60000;
+    return {
+      key: k,
+      name: data[k + 'Name'] || (k === 'a' ? 'Dad' : 'Brother'),
+      flight: (data[k + 'Flight'] || '').toUpperCase(),
+      from, color: k === 'a' ? '#38bdf8' : '#c4b5fd',
+      lateMin: data[k + 'Late'] || 0,
+      dep: zonedToUtc(data[k + 'Dep'], from.tz) + late,
+      arr: zonedToUtc(data[k + 'Arr'], BALI_TZ) + late
+    };
+  }
+  function state(t, now) {
+    if (!isFinite(t.dep) || !isFinite(t.arr)) return { phase: 'unknown', ratio: 0 };
+    if (now < t.dep) return { phase: 'before', ratio: 0 };
+    if (now < t.arr) return { phase: 'air', ratio: (now - t.dep) / (t.arr - t.dep) };
+    if (now < t.arr + OUT_OF_AIRPORT_MIN * 60000) return { phase: 'landed', ratio: 1 };
+    return { phase: 'out', ratio: 1 };
+  }
+
+  /* ---------- status copy ---------- */
+  function span(cls, text) { const s = document.createElement('span'); s.className = cls; s.textContent = text; return s; }
+  function line(t, s, now) {
+    const p = document.createElement('p');
+    const who = span(t.key === 'a' ? 'who-a' : 'who-b', t.name);
+    const late = t.lateMin ? ' (running ' + t.lateMin + ' min late)' : '';
+    let rest;
+    if (s.phase === 'unknown') rest = ': flight times not set yet.';
+    else if (s.phase === 'before') rest = ' leaves ' + t.from.name + ' in ' + dur(t.dep - now) + late + '.';
+    else if (s.phase === 'air') rest = ' is in the air and lands in Bali in ' + dur(t.arr - now) + ', at ' + fmtBali(t.arr) + late + '.';
+    else if (s.phase === 'landed') rest = ' landed ' + dur(now - t.arr) + ' ago and is probably in immigration or getting bags.';
+    else rest = ' should be at ' + (data.spot || 'the meeting point') + ' by now (landed ' + fmtBali(t.arr) + ').';
+    p.append(who, document.createTextNode(rest));
+    return p;
+  }
+  function meetLine(A, B, now) {
+    const el = $('meet-line'); el.innerHTML = '';
+    if (!isFinite(A.arr) || !isFinite(B.arr)) { el.textContent = 'Add both flights to see who lands first.'; return; }
+    const first = A.arr <= B.arr ? A : B, second = first === A ? B : A;
+    const gap = second.arr - first.arr;
+    const spot = data.spot || 'the meeting point';
+    const b = (t) => { const x = document.createElement('b'); x.textContent = t; return x; };
+    if (gap < 5 * 60000) {
+      el.append('They land at about the same time. Both head to ', b(spot), '.');
+    } else {
+      el.append(b(first.name), ' lands first, ', b(dur(gap)), ' before ', b(second.name), '. ', first.name, ' waits at ', b(spot), '.');
+    }
+    if (now > second.arr + OUT_OF_AIRPORT_MIN * 60000) el.append(' Both should have met by now. If not, use Find Hub below.');
+  }
+
+  /* ---------- flights list ---------- */
+  function flightCard(t, s, now) {
+    const c = document.createElement('section'); c.className = 'card flight';
+    const badge = { unknown: ['sched', 'Not set'], before: ['sched', 'Scheduled'], air: ['air', 'In flight'], landed: ['landed', 'Landed'], out: ['landed', 'Arrived'] }[s.phase];
+    const lateBadge = t.lateMin && (s.phase === 'before' || s.phase === 'air');
+    const pct = Math.round(s.ratio * 100);
+    c.innerHTML = `
+      <div class="flight-top">
+        <div><p class="flight-who" style="color:${t.color}"></p><p class="flight-no num"></p></div>
+        <span class="badge ${lateBadge ? 'late' : badge[0]}">${lateBadge ? 'Late +' + t.lateMin + 'm' : badge[1]}</span>
+      </div>
+      <div class="route">
+        <span class="code">${t.from.code}</span>
+        <div class="track"><div class="track-fill" style="width:${pct}%;background:${t.color}"></div>
+          <svg class="track-plane" style="left:${pct}%;fill:${t.color}"><use href="#i-plane"/></svg></div>
+        <span class="code">DPS</span>
+      </div>
+      <div class="times num">
+        <div><span>Departs (Bali time)</span><b>${isFinite(t.dep) ? fmtBali(t.dep) : '--'}</b></div>
+        <div><span>Lands (Bali time)</span><b>${isFinite(t.arr) ? fmtBali(t.arr) : '--'}</b></div>
+      </div>
+      <div class="flight-tools"></div>`;
+    c.querySelector('.flight-who').textContent = t.name;
+    c.querySelector('.flight-no').textContent = (t.flight || 'Flight not set') + (isFinite(t.arr) ? ' · ' + fmtBaliDay(t.arr) : '');
+    const tools = c.querySelector('.flight-tools');
+    if (t.flight) {
+      const a = document.createElement('a');
+      a.className = 'btn'; a.target = '_blank'; a.rel = 'noopener';
+      a.href = 'https://www.flightradar24.com/data/flights/' + encodeURIComponent(t.flight.replace(/\s+/g, '').toLowerCase());
+      a.innerHTML = '<svg><use href="#i-live"/></svg>Track live';
+      tools.append(a);
+    }
+    if (s.phase === 'before' || s.phase === 'air') {
+      const ctl = document.createElement('span'); ctl.className = 'late-ctl';
+      ctl.innerHTML = '<span>Late?</span>';
+      const minus = document.createElement('button'); minus.type = 'button'; minus.textContent = '−'; minus.setAttribute('aria-label', 'Remove 15 minutes delay for ' + t.name);
+      const plus = document.createElement('button'); plus.type = 'button'; plus.textContent = '+'; plus.setAttribute('aria-label', 'Add 15 minutes delay for ' + t.name);
+      minus.onclick = () => bumpLate(t.key, -15); plus.onclick = () => bumpLate(t.key, 15);
+      ctl.append(minus, plus); tools.append(ctl);
+    }
+    return c;
+  }
+  function bumpLate(k, m) {
+    data[k + 'Late'] = Math.max(0, (data[k + 'Late'] || 0) + m);
+    persist(); render(true);
+    toast(data[k + 'Late'] ? 'Marked ' + data[k + 'Late'] + ' min late (on this phone).' : 'Back on schedule.');
+  }
+
+  /* ---------- map ---------- */
+  let map = null, layers = [], lastMode = null;
+  function initMap() {
+    if (typeof L === 'undefined') { $('map-off').hidden = false; $('map-note').hidden = true; $('legend').hidden = true; return; }
+    map = L.map('map', { zoomControl: false, attributionControl: false });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
+  }
+  function planeIcon(color, bearing) {
+    return L.divIcon({ className: '', iconSize: [30, 30], iconAnchor: [15, 15],
+      html: `<svg width="30" height="30" viewBox="0 0 24 24" style="transform:rotate(${bearing}deg);fill:${color};filter:drop-shadow(0 1px 3px rgba(0,0,0,.6))"><use href="#i-plane"/></svg>` });
+  }
+  function dot(latlng, color, r) { return L.circleMarker(latlng, { radius: r || 6, color: '#0b0f19', weight: 2, fillColor: color, fillOpacity: 1 }); }
+  function bearing(a, b) {
+    const y = Math.sin(rad(b.lng - a.lng)) * Math.cos(rad(b.lat));
+    const x = Math.cos(rad(a.lat)) * Math.sin(rad(b.lat)) - Math.sin(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.cos(rad(b.lng - a.lng));
+    return (deg(Math.atan2(y, x)) + 360) % 360;
+  }
+  function drawMap(A, sA, B, sB, force) {
+    if (!map) return;
+    layers.forEach(l => map.removeLayer(l)); layers = [];
+    const add = (l) => { l.addTo(map); layers.push(l); return l; };
+    const meet = pin || DEFAULT_PIN;
+    const bothDown = sA.phase !== 'before' && sA.phase !== 'air' && sA.phase !== 'unknown' &&
+                     ((sB.phase !== 'before' && sB.phase !== 'air' && sB.phase !== 'unknown') || sB.phase === 'unknown');
+    const anyDown = ['landed', 'out'].includes(sA.phase) || ['landed', 'out'].includes(sB.phase);
+    const mode = (bothDown || (anyDown && me)) ? 'airport' : 'routes';
+
+    if (mode === 'routes') {
+      [[A, sA], [B, sB]].forEach(([t, s]) => {
+        if (s.phase === 'unknown') return;
+        const pts = []; for (let i = 0; i <= 48; i++) pts.push(slerp(t.from, DPS, i / 48));
+        add(L.polyline(pts.map(p => [p.lat, p.lng]), { color: t.color, weight: 2, opacity: 0.35, dashArray: '4 8' }));
+        const cut = Math.round(s.ratio * 48);
+        if (cut > 0) add(L.polyline(pts.slice(0, cut + 1).map(p => [p.lat, p.lng]), { color: t.color, weight: 3, opacity: 0.95 }));
+        add(dot([t.from.lat, t.from.lng], t.color, 5)).bindTooltip(t.from.code, { permanent: true, direction: 'left', className: 'pin-label', offset: [-6, 0] });
+        if (s.phase === 'air') {
+          const p = slerp(t.from, DPS, s.ratio), q = slerp(t.from, DPS, Math.min(1, s.ratio + 0.02));
+          add(L.marker([p.lat, p.lng], { icon: planeIcon(t.color, bearing(p, q)), zIndexOffset: 500 }));
+        }
+      });
+      add(dot([DPS.lat, DPS.lng], '#ffffff', 7)).bindTooltip('Bali · meet here', { permanent: true, direction: 'top', className: 'pin-label', offset: [0, -8] });
+      if (lastMode !== 'routes' || force) map.fitBounds(L.latLngBounds([[A.from.lat, A.from.lng], [B.from.lat, B.from.lng], [DPS.lat, DPS.lng]]), { padding: [36, 36] });
+      $('map-note').textContent = 'Positions estimated from schedule';
+    } else {
+      add(dot([meet.lat, meet.lng], '#ffffff', 9)).bindTooltip(data.spot || 'Meeting point', { permanent: true, direction: 'top', className: 'pin-label', offset: [0, -10] });
+      const pts = [[meet.lat, meet.lng]];
+      if (me) { add(dot([me.lat, me.lng], '#34d399', 8)).bindTooltip('You', { permanent: true, direction: 'right', className: 'pin-label', offset: [8, 0] }); pts.push([me.lat, me.lng]);
+        if (me.acc) add(L.circle([me.lat, me.lng], { radius: me.acc, color: '#34d399', weight: 1, fillOpacity: 0.08 })); }
+      if (lastMode !== 'airport' || force) {
+        if (pts.length > 1) map.fitBounds(pts, { padding: [50, 50], maxZoom: 18 }); else map.setView(pts[0], 17);
+      }
+      $('map-note').textContent = me ? 'You and the meeting point' : 'Meeting point · tap "Show my location"';
+    }
+    lastMode = mode;
+    $('legend').innerHTML = '';
+    if (mode === 'routes') [A, B].forEach(t => { const s = document.createElement('span'); s.innerHTML = `<i style="background:${t.color}"></i>`; s.append(t.name); $('legend').append(s); });
+    $('legend').hidden = mode !== 'routes';
+    setTimeout(() => map.invalidateSize(), 60);
+  }
+
+  /* ---------- render ---------- */
+  function render(force) {
+    const now = Date.now();
+    $('clock').textContent = 'Bali ' + fmtBali(now);
+    const A = traveller('a'), B = traveller('b');
+    const sA = state(A, now), sB = state(B, now);
+    const lines = $('status-lines'); lines.innerHTML = '';
+    lines.append(line(A, sA, now), line(B, sB, now));
+    meetLine(A, B, now);
+    const fl = $('flights'); fl.innerHTML = '';
+    fl.append(flightCard(A, sA, now), flightCard(B, sB, now));
+    $('meet-spot').textContent = data.spot || 'Not set';
+    $('meet-hint').textContent = data.spotHint || '';
+    $('maps-label').textContent = A.name + (A.name.toLowerCase().endsWith('s') ? "' live location" : "'s live location");
+    $('find-label').textContent = 'Find ' + A.name + (A.name.toLowerCase().endsWith('s') ? "' phone" : "'s phone");
+    if (me) {
+      const d = metres(me, pin || DEFAULT_PIN);
+      $('meet-dist').hidden = false;
+      $('meet-dist').textContent = d < 1000 ? 'You are about ' + Math.round(d / 5) * 5 + ' m from the meeting point' : 'You are ' + (d / 1000).toFixed(d < 10000 ? 1 : 0) + ' km from the meeting point';
+    }
+    drawMap(A, sA, B, sB, force);
+  }
+
+  /* ---------- location ---------- */
+  $('me-btn').addEventListener('click', () => {
+    if (!('geolocation' in navigator)) return toast('This phone cannot share its location with the page.');
+    if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; me = null; $('meet-dist').hidden = true; $('me-btn').lastChild.textContent = 'Show my location'; render(true); return; }
+    $('me-btn').lastChild.textContent = 'Finding you…';
+    watchId = navigator.geolocation.watchPosition((p) => {
+      const first = !me;
+      me = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy };
+      $('me-btn').lastChild.textContent = 'Hide my location';
+      render(first);
+    }, (err) => {
+      watchId = null; $('me-btn').lastChild.textContent = 'Show my location';
+      toast(err.code === 1 ? 'Location is blocked. Allow it for this site in browser settings.' : 'Could not get your location. Try near a window.');
+    }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+  });
+
+  /* ---------- setup ---------- */
+  const form = $('form');
+  ['aFrom', 'bFrom'].forEach(n => {
+    Object.values(AIRPORTS).forEach(a => form.elements[n].append(new Option(a.name + ' (' + a.code + ')', a.code)));
+  });
+  function fill(d) {
+    FIELDS.forEach(f => { form.elements[f].value = (d && d[f]) || ''; });
+    if (!form.elements.aFrom.value) form.elements.aFrom.value = 'PER';
+    if (!form.elements.bFrom.value) form.elements.bFrom.value = 'MEL';
+    $('pin-status').textContent = pin ? 'Pin set (' + pin.lat.toFixed(5) + ', ' + pin.lng.toFixed(5) + ').' : 'Shown at Bali airport arrivals until you set it.';
+  }
+  function readForm() { const d = {}; FIELDS.forEach(f => { d[f] = form.elements[f].value.trim(); }); return d; }
+  function persist() { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) { toast('Could not save on this phone.'); } }
+
+  $('pin-here').addEventListener('click', () => {
+    if (!('geolocation' in navigator)) return toast('Location is not available on this phone.');
+    $('pin-status').textContent = 'Finding your location…';
+    navigator.geolocation.getCurrentPosition((p) => {
+      pin = { lat: p.coords.latitude, lng: p.coords.longitude };
+      $('pin-status').textContent = 'Pin set here (accurate to about ' + Math.round(p.coords.accuracy) + ' m). Save to keep it.';
+    }, () => { $('pin-status').textContent = 'Could not get your location. The pin stays at Bali arrivals.'; }, { enableHighAccuracy: true, timeout: 20000 });
+  });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const d = readForm();
+    if (!d.aDep || !d.aArr || !d.bDep || !d.bArr) return toast('Add departure and landing times for both flights.');
+    const keepLate = data ? { aLate: data.aLate || 0, bLate: data.bLate || 0 } : {};
+    data = Object.assign(d, keepLate, { pin: pin || null });
+    persist(); show('main'); toast('Saved on this phone.');
+  });
+  $('edit-btn').addEventListener('click', () => { fill(data); show('setup'); });
+  $('cancel-btn').addEventListener('click', () => show('main'));
+
+  function b64e(s) { return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+  function b64d(s) { return decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/')))); }
+  $('share-btn').addEventListener('click', async () => {
+    const payload = Object.assign(readForm(), { pin: pin || null });
+    const link = location.href.split('#')[0] + '#setup=' + b64e(JSON.stringify(payload));
+    try { await navigator.clipboard.writeText(link); toast('Link copied. Send it privately, then open it and tap Save.'); }
+    catch (e) { prompt('Copy this link:', link); }
+  });
+
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2800); }
+
+  let ticker = null;
+  function show(view) {
+    $('main').hidden = view !== 'main'; $('setup').hidden = view !== 'setup';
+    $('cancel-btn').hidden = !data;
+    window.scrollTo(0, 0);
+    if (view === 'main') {
+      if (!map) initMap();
+      lastMode = null; render(true);
+      clearInterval(ticker); ticker = setInterval(() => render(false), 30000);
+    } else clearInterval(ticker);
+  }
+
+  const m = location.hash.match(/#setup=([\w-]+)/);
+  if (m) {
+    history.replaceState(null, '', location.pathname + location.search);
+    try {
+      const d = JSON.parse(b64d(m[1])); if (d.pin) pin = d.pin;
+      fill(d); show('setup'); toast('Details loaded. Check them, then tap Save.');
+    } catch (e) { fill(data); show(data ? 'main' : 'setup'); toast('That share link is damaged.'); }
+  } else if (data) show('main');
+  else { fill(null); show('setup'); }
+})();
+</script>
+</body>
+</html>
