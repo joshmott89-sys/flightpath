@@ -9,6 +9,10 @@
 <link rel="manifest" href="card.webmanifest">
 <link rel="icon" href="card-icon-192.png">
 <link rel="apple-touch-icon" href="card-icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Travel Card">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
   :root {
     --navy: #0b1730;
@@ -23,7 +27,7 @@
     --alert: #c42b2b;
     --ok: #157a52;
     --radius: 22px;
-    --shadow: 0 2px 4px rgba(11, 23, 48, 0.06), 0 8px 20px rgba(11, 23, 48, 0.08);
+    --shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 8px 20px rgba(0, 0, 0, 0.07);
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
   }
@@ -121,7 +125,7 @@
     text-align: left;
     transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 160ms;
   }
-  .tile:active { transform: scale(0.97); box-shadow: 0 1px 2px rgba(11,23,48,0.1); }
+  .tile:active { transform: scale(0.97); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
   .tile svg { width: 40px; height: 40px; stroke: var(--navy); }
   .tile.urgent svg { stroke: var(--alert); }
   .tile-label { font-size: 1.3125rem; font-weight: 800; line-height: 1.1; margin-top: 0.5rem; }
@@ -235,10 +239,20 @@
   .btn.secondary { background: var(--tile); color: var(--navy); border: 1.5px solid var(--line); }
   .btn-row { display: grid; gap: 0.75rem; margin-top: 1.25rem; }
   .note { font-size: 0.9375rem; color: var(--ink-soft); margin-top: 0.75rem; }
+  .install-help { position: fixed; inset: 0; z-index: 2000; background: rgba(5,10,20,0.6); display: flex; align-items: flex-end; justify-content: center; padding: 12px; }
+  .install-sheet { background: #fff; color: #0e1626; width: min(100%, 460px); border-radius: 22px; padding: 22px 20px calc(env(safe-area-inset-bottom, 0px) + 18px); box-shadow: 0 12px 40px rgba(0,0,0,0.35); }
+  .install-sheet h2 { font-size: 1.375rem; font-weight: 800; margin-bottom: 12px; }
+  .install-sheet ol { padding-left: 1.4rem; display: grid; gap: 10px; font-size: 1.0625rem; line-height: 1.45; }
+  .install-sheet li::marker { font-weight: 800; color: #0b6ea3; }
+  .install-done { margin-top: 18px; width: 100%; min-height: 54px; border: none; border-radius: 14px; background: #0b1730; color: #fff; font-size: 1.125rem; font-weight: 800; }
+  .paste-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .paste-row input { min-width: 0; width: 100%; }
+  .install-btn.btn { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
+  .install-btn svg { width: 22px; height: 22px; stroke: currentColor; }
   .toast {
     position: fixed; left: 50%; bottom: calc(var(--safe-bottom) + 1.25rem); transform: translateX(-50%);
     background: var(--navy); color: #fff; padding: 0.9rem 1.1rem; border-radius: 14px;
-    font-weight: 700; box-shadow: 0 6px 18px rgba(11,23,48,0.25); z-index: 20;
+    font-weight: 700; box-shadow: 0 6px 18px rgba(0,0,0,0.25); z-index: 20;
     width: min(90vw, 440px); text-align: center;
   }
 </style>
@@ -289,6 +303,7 @@
   <h2 class="help-title">Need help? Tap one and show it.</h2>
   <div class="tiles" id="tiles"></div>
 
+  <div style="padding:0 1rem .25rem"><button type="button" class="btn secondary install-btn" hidden><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>Install on home screen</button></div>
   <footer class="foot">
     <span class="offline"><i></i> Works without internet</span>
     <button class="link-btn" id="edit-btn" type="button">Edit details</button>
@@ -305,6 +320,15 @@
 <main id="setup" class="setup wrap" hidden>
   <h1>Set up the travel card</h1>
   <p class="lede">Fill this in on Dad's phone before he leaves. It's saved only on this phone and never uploaded. Open the card once with internet, and after that it works with none.</p>
+  <div class="group">
+    <h2>Install it first</h2>
+    <p class="note" style="margin:0 0 .75rem">Put the card on the home screen so Dad can open it like an app. Then fill in the details below from the home-screen icon.</p>
+    <button type="button" class="btn primary install-btn" hidden><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>Install on home screen</button>
+  </div>
+  <div class="group">
+    <h2>Got a setup link?</h2>
+    <div class="paste-row"><input id="paste-link" class="field" style="margin:0;width:100%;border:1.5px solid var(--line);border-radius:12px;padding:.8rem .9rem;font-size:1.0625rem;background:#fbfcfe" placeholder="Paste the link here" autocomplete="off"><button type="button" class="btn secondary" id="paste-load">Load</button></div>
+  </div>
 
   <form id="form" autocomplete="off">
     <div class="group">
@@ -377,6 +401,24 @@
   </div>
 </section>
 
+<!-- ===== Install help ===== -->
+<div class="install-help" id="install-help" hidden role="dialog" aria-modal="true" aria-labelledby="install-title">
+  <div class="install-sheet">
+    <h2 id="install-title">Add the Travel Card to the home screen</h2>
+    <ol id="install-ios">
+      <li>Open this page in <b>Safari</b>.</li>
+      <li>Tap the <b>Share</b> button <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-4px"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg> at the bottom of the screen.</li>
+      <li>Scroll down and tap <b>Add to Home Screen</b>, then <b>Add</b>.</li>
+      <li>Open the card from the new home-screen icon and fill in setup there. On iPhone the icon keeps its own copy of the details.</li>
+    </ol>
+    <ol id="install-android" hidden>
+      <li>Tap the <b>menu</b> <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true" style="vertical-align:-5px"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg> at the top right of Chrome.</li>
+      <li>Tap <b>Install app</b> or <b>Add to Home screen</b>.</li>
+      <li>Tap <b>Install</b>. The icon appears on the home screen.</li>
+    </ol>
+    <button type="button" class="install-done" id="install-close">Got it</button>
+  </div>
+</div>
 <div class="toast" id="toast" hidden role="status"></div>
 
 <script>
@@ -728,9 +770,38 @@
   } else if (data) show('card');
   else { fillForm(null); show('setup'); }
 
+
+  /* ---------- install to home screen ---------- */
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  let installEvent = null;
+  function syncInstall() { document.querySelectorAll('.install-btn').forEach(b => { b.hidden = isStandalone(); }); }
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvent = e; syncInstall(); });
+  window.addEventListener('appinstalled', () => { installEvent = null; document.querySelectorAll('.install-btn').forEach(b => { b.hidden = true; }); $('install-help').hidden = true; toast('Installed. Open it from the home screen.'); });
+  document.querySelectorAll('.install-btn').forEach(b => b.addEventListener('click', async () => {
+    if (installEvent) {
+      installEvent.prompt();
+      try { await installEvent.userChoice; } catch (e) {}
+      installEvent = null; return;
+    }
+    $('install-ios').hidden = !isIOS; $('install-android').hidden = isIOS;
+    $('install-help').hidden = false;
+  }));
+  $('install-close').addEventListener('click', () => { $('install-help').hidden = true; });
+  syncInstall();
+
+  /* ---------- paste a share link (needed inside an installed iPhone app) ---------- */
+  $('paste-load').addEventListener('click', () => {
+    const v = $('paste-link').value.trim();
+    const m = v.match(/#setup=([\w-]+)/);
+    if (!m) return toast('That doesn’t look like a share link. Copy the whole link and try again.');
+    location.hash = 'setup=' + m[1];
+    location.reload();
+  });
+
   /* ---------- offline ---------- */
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('card-sw.js').catch(() => {}));
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   }
 })();
 </script>
