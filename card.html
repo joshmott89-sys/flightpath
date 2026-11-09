@@ -191,11 +191,12 @@
   .steps-bar { display: grid; grid-template-columns: 1fr 1.6fr; gap: 0.75rem; }
   .steps-bar .back { background: rgba(255,255,255,0.12); color: #fff; }
   .steps-bar .back svg { stroke: #fff; }
-  .step-count { font-size: 1.25rem; font-weight: 800; color: var(--sky-ink); }
+  .step-count { font-size: 1.375rem; font-weight: 800; color: var(--sky-ink); }
   .step-dots { display: flex; gap: 6px; }
   .step-dots i { height: 6px; flex: 1; border-radius: 3px; background: var(--line); }
   .step-dots i.on { background: var(--navy); }
-  .step-text { font-size: clamp(2rem, 9vw, 2.75rem); font-weight: 850; line-height: 1.15; letter-spacing: -0.015em; color: var(--ink); text-wrap: pretty; }
+  .step-text { font-size: clamp(2.3rem, 10.2vw, 3.1rem); font-weight: 500; line-height: 1.22; letter-spacing: -0.01em; color: var(--ink-soft); text-wrap: pretty; }
+  .step-text strong { font-weight: 900; color: var(--ink); background: linear-gradient(transparent 58%, #ffe27a 58%, #ffe27a 92%, transparent 92%); padding: 0 0.06em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .step-papers { min-height: 64px; border-radius: 16px; border: 2px solid var(--navy); background: #fff; color: var(--navy); font-size: 1.25rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
   .step-papers svg { width: 26px; height: 26px; stroke: var(--navy); }
   .sign-foot { margin-top: auto; font-size: 1.125rem; color: var(--ink-soft); font-weight: 600; }
@@ -364,7 +365,7 @@
 
     <div class="group">
       <h2>Airport steps</h2>
-      <label class="field"><span>One step per line</span><textarea name="steps" class="tall"></textarea><small>Shown one at a time with a big Next button. {spot} and {son} fill in the meeting point and name. Steps that mention papers, visa or QR get a "Show my papers" button.</small></label>
+      <label class="field"><span>One step per line</span><textarea name="steps" class="tall"></textarea><small>Shown one at a time with a big Next button. {spot} and {son} fill in the meeting point and name. Put **stars** around key words to make them bold and highlighted. Steps that mention papers, visa or QR get a "Show my papers" button.</small></label>
       <button type="button" class="link-btn" id="steps-reset">Reset to the default steps</button>
     </div>
 
@@ -428,20 +429,20 @@
   const FIELDS = ['dadName','sonName','sonPhone','spot','spotHint','hotelName','hotelAddr','backupName','backupPhone','medical','steps'];
   const DOCS = ['docVisa', 'docArrival', 'docLevy'];
   const DEFAULT_STEPS = [
-    'Follow the signs that say ARRIVAL. Walk with the other passengers.',
-    'In the big immigration hall, walk past the first counter. You already have your visa.',
-    'Go to the far right-hand side of the room. Join the line for seniors and families.',
-    'Show the officer your passport and your papers. Wait until they give everything back.',
-    'Collect your suitcase from the belt.',
-    'At customs, show your arrival card QR code. Put your bags through the scanner if they ask.',
-    'Walk out through the glass doors. Keep walking straight ahead.',
-    'You will pass money changers and cash machines (ATMs). Do not stop. Keep going straight.',
-    'You will see a big crowd of drivers holding name signs. You do not need them. Keep walking.',
-    'If someone offers you a taxi, say: Tidak, terima kasih. (No, thank you.)',
-    'Look for WHSmith, a shop selling books and snacks. Walk past it.',
-    'Look for Starbucks: a green sign with a round white logo. It is on this ground floor. Do not go upstairs.',
-    'Wait at {spot}. Sit down if you can. {son} will find you.',
-    'Cannot find it? Tap Done, then tap I am lost, and show the screen to any staff member.'
+    'Follow the signs that say **ARRIVAL**. Walk with the other passengers.',
+    'In the big immigration hall, **walk past the first counter**. You already have your visa.',
+    'Go to the **far right-hand side** of the room. Join the line for **seniors and families**.',
+    'Show the officer your **passport** and your **papers**. **Wait** until they give everything back.',
+    'Collect your **suitcase** from the belt.',
+    'At **customs**, show your **arrival card QR code**. Put your bags through the scanner if they ask.',
+    'Walk out through the **glass doors**. Keep walking **straight ahead**.',
+    'You will pass **money changers** and **cash machines**. **Do not stop.** Keep going straight.',
+    'You will see a big crowd of **drivers holding name signs**. You do not need them. **Keep walking.**',
+    'If someone offers you a taxi, say: **Tidak, terima kasih.** (No, thank you.)',
+    'Look for **WHSmith**, a shop selling books and snacks. **Walk past it.**',
+    'Look for **Starbucks**: a **green sign** with a round white logo. It is on this **ground floor**. **Do not go upstairs.**',
+    '**Wait at {spot}.** Sit down if you can. **{son} will find you.**',
+    'Cannot find it? Tap **Done**, then tap **I am lost**, and show the screen to any staff member.'
 ].join('\n');
 
   /* ---------- storage ---------- */
@@ -627,7 +628,9 @@
     const board = $('steps-board'); board.innerHTML = '';
     const dots = el('div', { class: 'step-dots', 'aria-hidden': 'true' });
     list.forEach((_, i) => dots.append(el('i', { class: i <= stepIndex ? 'on' : '' })));
-    board.append(el('p', { class: 'step-count', text: 'Step ' + (stepIndex + 1) + ' of ' + list.length }), dots, el('p', { class: 'step-text', text: list[stepIndex] }));
+    const textEl = el('p', { class: 'step-text' });
+    list[stepIndex].split(/\*\*(.+?)\*\*/).forEach((part, i) => { if (part) textEl.append(i % 2 ? el('strong', { text: part }) : document.createTextNode(part)); });
+    board.append(el('p', { class: 'step-count', text: 'Step ' + (stepIndex + 1) + ' of ' + list.length }), dots, textEl);
     if (/papers|visa|qr/i.test(list[stepIndex])) {
       const b = el('button', { class: 'step-papers', type: 'button' }, icon('i-doc'), el('span', { text: 'Show my papers' }));
       b.addEventListener('click', () => openPapers());
