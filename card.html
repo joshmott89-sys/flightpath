@@ -106,6 +106,44 @@
     font-size: 1.1875rem; font-weight: 800;
   }
   .send-loc svg { width: 26px; height: 26px; stroke: #fff; }
+  .send-loc.alt { background: var(--tile); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow); }
+  .send-loc.alt svg { stroke: var(--ok); }
+  .live { margin: 0.75rem 1rem 0; }
+  .live .send-loc { margin: 0; width: 100%; }
+  .live-choose { background: var(--tile); border-radius: 18px; padding: 0.9rem; box-shadow: var(--shadow); }
+  .live-choose p { font-size: 1.1875rem; font-weight: 800; }
+  .live-choose div { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-top: 0.6rem; }
+  .live-choose button[data-min] { min-height: 64px; border-radius: 14px; border: 2px solid var(--navy); background: #fff; font-size: 1.0625rem; font-weight: 800; line-height: 1.15; }
+  .live-on { display: flex; align-items: center; gap: 0.75rem; background: #e3f5ec; border: 2px solid var(--ok); border-radius: 18px; padding: 0.75rem 0.9rem; }
+  .live-on p { flex: 1; font-size: 1.0625rem; font-weight: 800; color: #0d4f36; line-height: 1.25; }
+  .live-on p span { display: block; font-size: 0.9375rem; font-weight: 600; color: #2c6650; margin-top: 0.15rem; }
+  .live-on button { min-height: 52px; padding: 0 1.1rem; border-radius: 14px; border: 2px solid #0d4f36; background: #fff; color: #0d4f36; font-size: 1.0625rem; font-weight: 800; }
+  .sign-qr { display: flex; flex-direction: column; gap: 0.75rem; align-items: center; text-align: center; background: var(--ground); border-radius: 14px; padding: 1rem; }
+  .sign-qr svg { width: 210px; height: 210px; flex: none; background: #fff; border-radius: 8px; display: block; }
+  .sign-qr p { font-size: 1.0625rem; font-weight: 700; line-height: 1.3; }
+  .sign-qr p span { display: block; font-weight: 600; color: var(--ink-soft); margin-top: 0.3rem; }
+  .check { display: flex; gap: 0.6rem; align-items: flex-start; margin-top: 0.9rem; font-weight: 600; }
+  .check input { width: 24px; height: 24px; flex: none; accent-color: var(--navy); }
+  .paper { display: none; }
+  @page { margin: 14mm; }
+  @media print {
+    body { background: #fff; }
+    body > *:not(.paper) { display: none !important; }
+    .paper { display: block; color: #000; font-size: 12pt; line-height: 1.35; }
+    .paper h1 { font-size: 22pt; font-weight: 800; }
+    .paper h2 { font-size: 12pt; font-weight: 800; margin: 14pt 0 5pt; padding-bottom: 2pt; border-bottom: 1.5pt solid #000; }
+    .paper .big { font-size: 20pt; font-weight: 800; line-height: 1.15; }
+    .paper .cols { display: flex; gap: 16pt; align-items: center; }
+    .paper .cols > div { flex: 1; }
+    .paper img.face { width: 84pt; height: 84pt; border-radius: 50%; object-fit: cover; }
+    .paper .pqr { text-align: center; font-size: 9pt; width: 120pt; }
+    .paper .pqr svg { width: 110pt; height: 110pt; }
+    .paper table { width: 100%; border-collapse: collapse; }
+    .paper td { border-bottom: 0.5pt solid #999; padding: 5pt 4pt; vertical-align: top; }
+    .paper td:first-child { font-weight: 700; font-size: 13pt; width: 56%; }
+    .paper .doc { break-before: page; }
+    .paper .doc img { max-width: 100%; max-height: 230mm; }
+  }
   .help-title {
     font-size: 1.25rem; font-weight: 800; color: var(--navy);
     margin: 0.75rem 1.25rem 0.75rem;
@@ -299,6 +337,15 @@
     <button type="button" class="go" id="steps-btn"><svg aria-hidden="true"><use href="#i-steps"/></svg>Airport steps</button>
     <button type="button" id="papers-btn"><svg aria-hidden="true"><use href="#i-doc"/></svg>My papers</button>
   </div>
+  <div class="live" id="live" hidden>
+    <button type="button" class="send-loc" id="live-btn"><svg aria-hidden="true"><use href="#i-send"/></svg><span>Share my live location</span></button>
+    <div class="live-choose" id="live-choose" hidden>
+      <p>Share for how long?</p>
+      <div><button type="button" data-min="60">1 hour</button><button type="button" data-min="240">4 hours</button><button type="button" data-min="0">Until I stop</button></div>
+      <button type="button" class="link-btn" id="live-cancel">Cancel</button>
+    </div>
+    <div class="live-on" id="live-on" hidden><p id="live-text" aria-live="polite"></p><button type="button" id="live-stop">Stop</button></div>
+  </div>
   <button type="button" class="send-loc" id="send-loc" hidden><svg aria-hidden="true"><use href="#i-send"/></svg><span id="send-loc-label">Send my location</span></button>
 
   <h2 class="help-title">Need help? Tap one and show it.</h2>
@@ -378,6 +425,14 @@
     </div>
 
     <div class="group">
+      <h2>Live location (optional)</h2>
+      <p class="note" style="margin:0 0 .75rem">When this phone has internet (an eSIM or Wi-Fi) and the card is open, it can send its location to the Bali Meetup page. That works on iPhone and Android and needs no Google account. The location is scrambled with the family code, so only people with the code can read it.</p>
+      <label class="field"><span>Family code</span><input name="famCode" placeholder="Same code as on the Meetup page" autocapitalize="characters" autocomplete="off"></label>
+      <button type="button" class="btn secondary" id="code-new">Create a new code</button>
+      <label class="check"><input type="checkbox" name="autoShare"><span>Start sharing by itself whenever the card is open and online</span></label>
+    </div>
+
+    <div class="group">
       <h2>Backup contact &amp; health</h2>
       <label class="field"><span>Backup contact name</span><input name="backupName" placeholder="e.g. Josh"></label>
       <label class="field"><span>Backup phone</span><input name="backupPhone" type="tel" inputmode="tel" placeholder="+61 4xx xxx xxx"></label>
@@ -387,8 +442,10 @@
     <div class="btn-row">
       <button class="btn primary" type="submit">Save card</button>
       <button class="btn secondary" type="button" id="link-btn">Copy setup link</button>
+      <button class="btn secondary" type="button" id="print-btn">Print a paper copy</button>
       <button class="btn secondary" type="button" id="cancel-btn" hidden>Cancel</button>
     </div>
+    <p class="note">The paper copy has the meeting point, phone numbers, help phrases and papers, in case the phone is lost or flat. Save the card first, then print it or save it as a PDF.</p>
     <p class="note">"Copy setup link" lets you fill this in on your own phone and send it to Dad's. Everything except the photo and papers travels inside the link. Only send it in a private message.</p>
   </form>
 </main>
@@ -420,13 +477,16 @@
     <button type="button" class="install-done" id="install-close">Got it</button>
   </div>
 </div>
+<section class="paper" id="paper" aria-hidden="true"></section>
+
 <div class="toast" id="toast" hidden role="status"></div>
 
+<script src="qr.js"></script>
 <script>
 (function () {
   const KEY = 'fp-travel-card-v1';
   const $ = (id) => document.getElementById(id);
-  const FIELDS = ['dadName','sonName','sonPhone','spot','spotHint','hotelName','hotelAddr','backupName','backupPhone','medical','steps'];
+  const FIELDS = ['dadName','sonName','sonPhone','spot','spotHint','hotelName','hotelAddr','backupName','backupPhone','medical','steps','famCode'];
   const DOCS = ['docVisa', 'docArrival', 'docLevy'];
   const DEFAULT_STEPS = [
     'Follow the signs that say **ARRIVAL**. Walk with the other passengers.',
@@ -549,7 +609,7 @@
     $('son-phone').textContent = d.sonPhone || '';
     $('son').href = d.sonPhone ? tel(d.sonPhone) : '#';
 
-    updateSendLoc();
+    updateSendLoc(); renderLive(); resumeShare();
     const grid = $('tiles'); grid.innerHTML = '';
     phrases(d).forEach(p => {
       const b = el('button', { class: 'tile' + (p.urgent ? ' urgent' : ''), type: 'button', 'aria-label': p.label + ': show a sign to staff' },
@@ -563,8 +623,8 @@
   let wakeLock = null;
   async function keepAwake(on) {
     try {
-      if (on && 'wakeLock' in navigator && !wakeLock) wakeLock = await navigator.wakeLock.request('screen');
-      else if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+      if (on && 'wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); }
+      else if (!on && wakeLock && !sharing()) { await wakeLock.release(); wakeLock = null; }
     } catch (e) { /* not supported or refused: fine */ }
   }
   function openSign(id, fromHistory) {
@@ -577,6 +637,7 @@
       if (x.href) dd.append(el('a', { href: x.href, text: x.dd })); else dd.textContent = x.dd;
       board.append(el('dl', { class: 'sign-detail' }, el('dt', { text: x.dt }), dd));
     });
+    if (['call', 'lost', 'doctor'].includes(id)) addHelpQr(board);
     const foot = el('p', { class: 'sign-foot' });
     if (data.dadName) foot.append('Nama saya / My name: ', el('b', { text: data.dadName }), el('br'));
     foot.append('Saya tidak bisa berbahasa Indonesia. / I don’t speak Indonesian.');
@@ -662,8 +723,8 @@
     b.hidden = !(navigator.onLine && data && data.sonPhone);
     $('send-loc-label').textContent = 'Send my location to ' + (first(data && data.sonName) || 'family');
   }
-  window.addEventListener('online', () => data && updateSendLoc());
-  window.addEventListener('offline', () => data && updateSendLoc());
+  window.addEventListener('online', () => { if (data) { updateSendLoc(); renderLive(); resumeShare(); shareTick(); } });
+  window.addEventListener('offline', () => { if (data) { updateSendLoc(); renderLive(); } });
   $('send-loc').addEventListener('click', () => {
     if (!('geolocation' in navigator)) return toast('This phone cannot find its location.');
     $('send-loc-label').textContent = 'Finding where you are…';
@@ -676,11 +737,205 @@
     }, () => { updateSendLoc(); toast('Could not find your location. Try again near a window.'); }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 });
   });
 
+
+  /* ---------- scan-to-message code on the help signs (works with no internet on this phone) ---------- */
+  const NS = 'http://www.w3.org/2000/svg';
+  const FIX_KEY = KEY + ':fix';
+  function saveFix(pos) {
+    const f = { la: pos.coords.latitude, lo: pos.coords.longitude, acc: Math.round(pos.coords.accuracy || 0), t: Date.now() };
+    try { localStorage.setItem(FIX_KEY, JSON.stringify(f)); } catch (e) {}
+    return f;
+  }
+  function recentFix(maxAgeMs) {
+    try { const f = JSON.parse(localStorage.getItem(FIX_KEY)); return f && Date.now() - f.t < maxAgeMs ? f : null; } catch (e) { return null; }
+  }
+  function qrSvg(text, label) {
+    if (typeof qrcode === 'undefined') return null;
+    try {
+      const q = qrcode(0, 'M'); q.addData(text); q.make();
+      const n = q.getModuleCount(); let d = '';
+      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) d += 'M' + c + ' ' + r + 'h1v1h-1z';
+      const svg = document.createElementNS(NS, 'svg');
+      svg.setAttribute('viewBox', '-3 -3 ' + (n + 6) + ' ' + (n + 6)); svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', label);
+      svg.setAttribute('shape-rendering', 'crispEdges');
+      const path = document.createElementNS(NS, 'path'); path.setAttribute('d', d); path.setAttribute('fill', '#000');
+      svg.append(path); return svg;
+    } catch (e) { return null; }
+  }
+  function helpLink(fix) {
+    let msg = 'Hello, I am with ' + (data.dadName || 'your father') + '. He asked me to message you.';
+    if (fix) msg += ' He is here: https://maps.google.com/?q=' + fix.la.toFixed(5) + ',' + fix.lo.toFixed(5);
+    return 'https://wa.me/' + String(data.sonPhone).replace(/[^\d]/g, '') + '?text=' + encodeURIComponent(msg);
+  }
+  let qrToken = 0;
+  function addHelpQr(board) {
+    if (!data.sonPhone || typeof qrcode === 'undefined') return;
+    const token = ++qrToken;
+    const slot = el('span'), status = el('span');
+    const box = el('div', { class: 'sign-qr' }, slot,
+      el('p', { lang: 'id', text: 'Pindai dengan kamera HP untuk kirim pesan WhatsApp ke anak saya.' },
+        el('span', { lang: 'en', text: 'Scan with your phone camera to message my son on WhatsApp.' }), status));
+    function draw(fix) {
+      const svg = qrSvg(helpLink(fix), 'Code to message my son on WhatsApp');
+      if (!svg) { box.remove(); return; }
+      slot.innerHTML = ''; slot.append(svg);
+      status.textContent = fix ? 'Termasuk lokasi saya. / Includes my location.' : '';
+    }
+    draw(recentFix(5 * 60000));
+    board.append(box);
+    if ('geolocation' in navigator) navigator.geolocation.getCurrentPosition((pos) => {
+      const f = saveFix(pos); if (token === qrToken && box.isConnected) draw(f);
+    }, () => {}, { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 });
+  }
+
+  /* ---------- live location share (no Google account; encrypted; needs internet + the card open) ---------- */
+  const RELAY = 'https://ntfy.sh';   // free public message relay; it only ever sees scrambled text
+  const SHARE_KEY = KEY + ':share', SENT_KEY = KEY + ':sent';
+  let share = null; try { share = JSON.parse(localStorage.getItem(SHARE_KEY)); } catch (e) {}
+  let shareWatch = null, shareTimer = null, lastFix = null, lastSent = null, linkP = null, choosing = false, shareErr = false;
+  const normCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const canLink = () => !!(data && normCode(data.famCode).length >= 8 && window.crypto && crypto.subtle);
+  function sharing() { return !!(share && !share.stopped && (share.until === 0 || share.until > Date.now())); }
+  async function linkKeys(code) {
+    const enc = new TextEncoder();
+    const h = async (x) => new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(x)));
+    const t = await h('fp-topic:' + code);
+    const topic = 'fp' + Array.from(t.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const key = await crypto.subtle.importKey('raw', await h('fp-key:' + code), 'AES-GCM', false, ['encrypt', 'decrypt']);
+    return { topic, key };
+  }
+  function link() {
+    if (!canLink()) return null;
+    const c = normCode(data.famCode);
+    if (!linkP || linkP.code !== c) linkP = { code: c, p: linkKeys(c) };
+    return linkP.p;
+  }
+  async function publish(obj) {
+    const l = await link(); if (!l) return false;
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, l.key, new TextEncoder().encode(JSON.stringify(obj))));
+    const buf = new Uint8Array(12 + ct.length); buf.set(iv); buf.set(ct, 12);
+    let bin = ''; buf.forEach(b => { bin += String.fromCharCode(b); });
+    const res = await fetch(RELAY + '/' + l.topic, { method: 'POST', body: btoa(bin) });
+    return res.ok;
+  }
+  function distM(a, b) {
+    const R = 6371000, r = (x) => x * Math.PI / 180, dp = r(b.la - a.la), dl = r(b.lo - a.lo);
+    const h = Math.sin(dp / 2) ** 2 + Math.cos(r(a.la)) * Math.cos(r(b.la)) * Math.sin(dl / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+  function sentToday(add) {
+    const day = new Date().toISOString().slice(0, 10); let s = null;
+    try { s = JSON.parse(localStorage.getItem(SENT_KEY)); } catch (e) {}
+    if (!s || s.d !== day) s = { d: day, n: 0 };
+    if (add) { s.n++; try { localStorage.setItem(SENT_KEY, JSON.stringify(s)); } catch (e) {} }
+    return s.n;
+  }
+  let ticking = false;
+  async function shareTick() {
+    if (!sharing()) { if (shareWatch !== null) endShare(false); return; }
+    if (ticking || !navigator.onLine || !lastFix) { renderLive(); return; }
+    const now = Date.now(), since = lastSent ? now - lastSent.t : Infinity, moved = lastSent ? distM(lastSent, lastFix) : Infinity;
+    const minGap = sentToday() > 180 ? 300000 : 60000;   // stay well inside the relay's free daily allowance
+    if (since >= 300000 || (moved > 25 && since >= minGap)) {
+      ticking = true;
+      try {
+        const ok = await publish({ la: lastFix.la, lo: lastFix.lo, acc: lastFix.acc, t: lastFix.t, until: share.until });
+        shareErr = !ok; if (ok) { lastSent = { la: lastFix.la, lo: lastFix.lo, t: now }; sentToday(true); }
+      } catch (e) { shareErr = true; }
+      ticking = false;
+    }
+    renderLive();
+  }
+  function beginWatch() {
+    if (shareWatch !== null || !('geolocation' in navigator)) return;
+    shareWatch = navigator.geolocation.watchPosition((pos) => { lastFix = saveFix(pos); if (!lastSent) shareTick(); }, (err) => {
+      if (err.code === 1) { toast('Location is blocked. Allow it for this site in the browser settings.'); endShare(true); }
+    }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 30000 });
+    shareTimer = setInterval(shareTick, 20000);
+    keepAwake(true);
+  }
+  function startShare(mins) {
+    share = { until: mins ? Date.now() + mins * 60000 : 0, stopped: false };
+    try { localStorage.setItem(SHARE_KEY, JSON.stringify(share)); } catch (e) {}
+    lastSent = null; choosing = false; beginWatch(); renderLive();
+  }
+  function endShare(byUser) {
+    if (shareWatch !== null) { navigator.geolocation.clearWatch(shareWatch); shareWatch = null; }
+    clearInterval(shareTimer); shareTimer = null;
+    if (byUser && share) {
+      share.stopped = true; try { localStorage.setItem(SHARE_KEY, JSON.stringify(share)); } catch (e) {}
+      const f = lastFix || recentFix(3600000);
+      if (navigator.onLine) publish(Object.assign({ stop: true, t: Date.now() }, f ? { la: f.la, lo: f.lo, acc: f.acc } : {})).catch(() => {});
+    }
+    keepAwake(false); renderLive();
+  }
+  function resumeShare() {
+    if (!canLink()) return;
+    if (sharing()) beginWatch();
+    else if (data.autoShare && navigator.onLine && !(share && share.stopped)) startShare(0);
+  }
+  function renderLive() {
+    const can = canLink(), on = sharing();
+    $('live').hidden = !(can && (navigator.onLine || on));
+    $('live-btn').hidden = on || choosing; $('live-choose').hidden = on || !choosing; $('live-on').hidden = !on;
+    $('send-loc').classList.toggle('alt', can);
+    if (!on) return;
+    const t = $('live-text'); t.textContent = 'Sharing your location with family';
+    let sub = share.until ? 'Until ' + new Date(share.until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '. Keep this card open.' : 'Until you tap Stop. Keep this card open.';
+    if (!navigator.onLine) sub = 'No internet right now. It will send again when you are back online.';
+    else if (!lastFix) sub = 'Finding where you are…';
+    else if (shareErr) sub = 'Could not send just now. Trying again shortly.';
+    t.append(el('span', { text: sub }));
+  }
+  $('live-btn').addEventListener('click', () => { choosing = true; renderLive(); });
+  $('live-cancel').addEventListener('click', () => { choosing = false; renderLive(); });
+  $('live-choose').querySelectorAll('[data-min]').forEach(b => b.addEventListener('click', () => startShare(+b.dataset.min)));
+  $('live-stop').addEventListener('click', () => endShare(true));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && sharing()) { keepAwake(true); shareTick(); } });
+
+  /* ---------- paper copy ---------- */
+  function fillPaper() {
+    const d = data, pg = $('paper'); pg.innerHTML = '';
+    const row = (a, b) => el('tr', null, el('td', { text: a }), el('td', { text: b }));
+    pg.append(el('h1', { text: 'Travel card' + (d.dadName ? ': ' + d.dadName : '') }));
+    pg.append(el('h2', { text: 'Wait here / Tunggu di sini' }), el('p', { class: 'big', text: d.spot || '' }));
+    if (d.spotHint) pg.append(el('p', { text: d.spotHint }));
+    const who = el('div', null, el('p', { class: 'big', text: (d.sonName || '') + '  ' + (d.sonPhone || '') }));
+    if (d.backupPhone) who.append(el('p', { text: 'Or / Atau: ' + (d.backupName || 'family') + '  ' + d.backupPhone }));
+    const cols = el('div', { class: 'cols' });
+    if (d.photo) cols.append(el('img', { class: 'face', src: d.photo, alt: '' }));
+    cols.append(who);
+    const qr = d.sonPhone && qrSvg(helpLink(null), 'Code to message on WhatsApp');
+    if (qr) cols.append(el('div', { class: 'pqr' }, qr, el('p', { text: 'Pindai untuk WhatsApp / Scan to WhatsApp' })));
+    pg.append(el('h2', { text: 'Meeting me / Anak saya' }), cols);
+    if (d.hotelName || d.hotelAddr) pg.append(el('h2', { text: 'Hotel' }), el('p', { class: 'big', text: d.hotelName || '' }), el('p', { text: d.hotelAddr || '' }));
+    const tb = el('table'); phrases(d).forEach(p => tb.append(row(p.idn, p.en)));
+    pg.append(el('h2', { text: 'Tolong bantu saya / Please help me' }), tb);
+    if (d.medical) pg.append(el('h2', { text: 'Catatan medis / Medical notes' }), el('p', { text: d.medical }));
+    [['docVisa', 'Visa (e-VOA)'], ['docArrival', 'Kartu kedatangan / Arrival card'], ['docLevy', 'Pungutan wisata Bali / Bali tourist levy']].forEach(([k, label]) => {
+      if (d[k]) pg.append(el('div', { class: 'doc' }, el('h2', { text: label }), el('img', { src: d[k], alt: label })));
+    });
+  }
+  $('print-btn').addEventListener('click', () => {
+    if (!data) return toast('Save the card first, then print it.');
+    fillPaper(); window.print();
+  });
+  window.addEventListener('beforeprint', () => { if (data) fillPaper(); });
+
+  function genCode() {
+    const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', r = crypto.getRandomValues(new Uint8Array(16));
+    return Array.from(r, (b, i) => (i && i % 4 === 0 ? '-' : '') + A[b % A.length]).join('');
+  }
+  $('code-new').addEventListener('click', () => { form.elements.famCode.value = genCode(); toast('New code made. Put the same code on the Meetup page.'); });
+
   /* ---------- setup ---------- */
   const form = $('form');
   function fillForm(d) {
     FIELDS.forEach(f => { form.elements[f].value = (d && d[f]) || ''; });
     if (!form.elements.steps.value) form.elements.steps.value = DEFAULT_STEPS;
+    if (!form.elements.famCode.value) { try { form.elements.famCode.value = (JSON.parse(localStorage.getItem('fp-meetup-v1')) || {}).famCode || ''; } catch (e) {} }
+    form.elements.autoShare.checked = !!(d && d.autoShare);
     pendingPhoto = d && d.photo;
     showPhotoPreview();
     DOCS.forEach(k => { pendingDocs[k] = (d && d[k]) || null; showDoc(k); });
@@ -713,6 +968,7 @@
   function readForm() {
     const d = {};
     FIELDS.forEach(f => { d[f] = form.elements[f].value.trim(); });
+    d.autoShare = form.elements.autoShare.checked;
     return d;
   }
   $('photo-input').addEventListener('change', (e) => {
