@@ -28,6 +28,10 @@ FlightPath lets family see where a traveller is during a trip. For the Bali trip
 - Built and maintained from an Android phone.
 - Open: flight numbers and times for both travellers have not been provided yet.
 
+- Live location: Dad's card can send its position (end-to-end encrypted with a family code) through a public relay (ntfy.sh) to meetup.html. No account, works on iPhone and Android, only while the card is open and online. Google Maps sharing and Find Hub are secondary options.
+- Help signs carry a scan-to-WhatsApp code that includes Dad's GPS position; it needs no connection on Dad's phone.
+- A printable paper copy of the card covers a lost or flat phone.
+
 ## Evidence on Hand
 - No real flight data, photos or contact details are in the repo. Never fabricate them; use clearly labelled placeholders or empty states.
 

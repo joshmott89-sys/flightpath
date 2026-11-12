@@ -117,6 +117,14 @@
   .meet .actions { grid-template-columns: 1fr; }
   .meet small { display: block; color: var(--text-2); font-size: 0.875rem; margin-top: 10px; }
 
+  .find h2 { font-size: 1.0625rem; font-weight: 750; color: var(--text-2); }
+  .find .live-line { font-size: 1.25rem; font-weight: 700; line-height: 1.3; margin-top: 6px; text-wrap: pretty; }
+  .find .live-sub { color: var(--text-2); margin-top: 6px; }
+  .find .live-sub.warn { color: var(--warn); }
+  .find .actions { grid-template-columns: 1fr; }
+  .find .actions.two { grid-template-columns: 1fr 1fr; margin-top: 10px; }
+  .find .other { font-size: 0.875rem; font-weight: 700; color: var(--text-2); margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .find small { display: block; color: var(--text-2); font-size: 0.875rem; margin-top: 12px; }
   .foot { display: flex; justify-content: space-between; color: var(--text-2); font-size: 0.875rem; padding: 0 4px; gap: 12px; }
   .link-btn { background: none; border: none; color: var(--text-2); text-decoration: underline; text-underline-offset: 3px; padding: 10px 2px; font-size: 0.875rem; }
 
@@ -187,12 +195,22 @@
     <p class="spot" id="meet-spot"></p>
     <p class="hint" id="meet-hint"></p>
     <p class="dist num" id="meet-dist" hidden></p>
+  </section>
+
+  <section class="card find">
+    <h2 id="find-title">Where Dad's phone is</h2>
+    <p class="live-line" id="dad-live" aria-live="polite"></p>
+    <p class="live-sub" id="dad-sub"></p>
     <div class="actions">
-      <a class="btn primary" id="find-btn" href="https://www.google.com/android/find" target="_blank" rel="noopener"><svg><use href="#i-find"/></svg><span id="find-label">Find Dad's phone</span></a>
-      <a class="btn" id="maps-btn" href="https://www.google.com/maps" target="_blank" rel="noopener"><svg><use href="#i-me"/></svg><span id="maps-label">Dad's live location</span></a>
+      <a class="btn primary" id="dad-maps" target="_blank" rel="noopener" hidden><svg><use href="#i-find"/></svg>Open in Maps</a>
       <button class="btn" id="me-btn" type="button"><svg><use href="#i-me"/></svg>Show my location</button>
     </div>
-    <small><b>Live location</b> opens Google Maps. If Dad shares his location with you, he shows up there in real time whenever his phone has data, for example with an eSIM. <b>Find Hub</b> still works when his phone is offline, as long as Bluetooth is on. On iPhone it opens in the browser; sign in with his Google account. Tracker tags can only be shared with Android phones, so an iPhone needs a location link sent from an Android phone (Find Hub → the tag → Share item location).</small>
+    <p class="other">Other ways to find him</p>
+    <div class="actions two">
+      <a class="btn" id="maps-btn" href="https://www.google.com/maps" target="_blank" rel="noopener">Google Maps</a>
+      <a class="btn" id="find-btn" href="https://www.google.com/android/find" target="_blank" rel="noopener">Find Hub</a>
+    </div>
+    <small>The position above comes straight from his travel card. It needs no Google account and works on iPhone and Android, but only updates while his card is open and his phone has internet. <b>Google Maps</b> location sharing keeps going with the card closed. <b>Find Hub</b> is the offline backup and needs his Google sign-in.</small>
   </section>
 
   <button type="button" class="btn install-btn" hidden><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>Install on home screen</button>
@@ -251,6 +269,12 @@
       </div>
     </fieldset>
 
+    <fieldset class="card">
+      <legend>Live location from the travel card</legend>
+      <label class="field"><span>Family code</span><input name="famCode" autocapitalize="characters" autocomplete="off"><small>Put the same code in the travel card's setup. Anyone with this code can see the location, so keep it in the family. It travels inside the share link.</small></label>
+      <button class="btn" type="button" id="code-new" style="width:100%">Create a new code</button>
+    </fieldset>
+
     <div class="btn-col">
       <button class="btn primary" type="submit">Save</button>
       <button class="btn" type="button" id="share-btn">Copy share link</button>
@@ -294,7 +318,7 @@
     ADL: { code: 'ADL', name: 'Adelaide', lat: -34.9450, lng: 138.5306, tz: 'Australia/Adelaide' },
     DRW: { code: 'DRW', name: 'Darwin', lat: -12.4147, lng: 130.8767, tz: 'Australia/Darwin' }
   };
-  const FIELDS = ['aName','aFlight','aFrom','aDep','aArr','bName','bFlight','bFrom','bDep','bArr','spot','spotHint'];
+  const FIELDS = ['aName','aFlight','aFrom','aDep','aArr','bName','bFlight','bFrom','bDep','bArr','spot','spotHint','famCode'];
   const OUT_OF_AIRPORT_MIN = 60; // rough allowance for immigration + bags
   const $ = (id) => document.getElementById(id);
 
@@ -302,6 +326,86 @@
   try { data = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
   let pin = data && data.pin;
   let me = null, watchId = null;
+
+  /* ---------- Dad's live location, sent by his travel card (encrypted; no Google account) ---------- */
+  const RELAY = 'https://ntfy.sh';
+  const DAD_KEY = KEY + ':dad';
+  let dad = null; try { dad = JSON.parse(localStorage.getItem(DAD_KEY)); } catch (e) {}
+  let lastMsgId = null, linkP = null, relayDown = false, polling = false;
+  const normCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const canLink = () => !!(data && normCode(data.famCode).length >= 8 && window.crypto && crypto.subtle);
+  async function linkKeys(code) {
+    const enc = new TextEncoder();
+    const h = async (x) => new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(x)));
+    const t = await h('fp-topic:' + code);
+    const topic = 'fp' + Array.from(t.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const key = await crypto.subtle.importKey('raw', await h('fp-key:' + code), 'AES-GCM', false, ['encrypt', 'decrypt']);
+    return { topic, key };
+  }
+  async function decrypt(key, b64) {
+    const buf = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12));
+    return JSON.parse(new TextDecoder().decode(pt));
+  }
+  async function pollDad() {
+    if (!canLink() || document.hidden || polling || $('main').hidden) return;
+    const c = normCode(data.famCode);
+    if (!linkP || linkP.code !== c) { linkP = { code: c, p: linkKeys(c) }; lastMsgId = null; }
+    polling = true;
+    try {
+      const l = await linkP.p;
+      const res = await fetch(RELAY + '/' + l.topic + '/json?poll=1&since=' + (lastMsgId || '12h'), { cache: 'no-store' });
+      if (!res.ok) throw new Error('relay');
+      let newest = null;
+      for (const ln of (await res.text()).split('\n')) {
+        if (!ln.trim()) continue;
+        let m; try { m = JSON.parse(ln); } catch (e) { continue; }
+        if (m.event !== 'message') continue;
+        lastMsgId = m.id;
+        try { const o = await decrypt(l.key, m.message); if (o && typeof o.t === 'number' && (!newest || o.t >= newest.t)) newest = o; } catch (e) { /* not ours, or wrong code */ }
+      }
+      relayDown = false;
+      if (newest && (!dad || newest.t >= dad.t)) {
+        const first = !dad || dad.la == null;
+        if (newest.la == null && dad) newest = Object.assign({}, dad, newest);
+        dad = newest; try { localStorage.setItem(DAD_KEY, JSON.stringify(dad)); } catch (e) {}
+        polling = false; render(first); return;
+      }
+    } catch (e) { relayDown = true; }
+    polling = false; renderDad();
+  }
+  function renderDad() {
+    const A = traveller('a'), poss = A.name + (A.name.toLowerCase().endsWith('s') ? "'" : "'s");
+    $('find-title').textContent = 'Where ' + poss + ' phone is';
+    const lineEl = $('dad-live'), sub = $('dad-sub'), btn = $('dad-maps');
+    sub.className = 'live-sub'; btn.hidden = true;
+    if (!canLink()) { lineEl.textContent = 'Live location is not set up yet.'; sub.textContent = 'Add a family code in Edit flights, and the same code on ' + poss + ' travel card.'; return; }
+    if (!dad || dad.la == null) {
+      lineEl.textContent = 'No location from ' + poss + ' phone yet.';
+      sub.textContent = relayDown ? 'Can’t reach the location service right now. Check your internet.' : 'It appears here once his travel card is open, online and sharing.';
+      return;
+    }
+    const now = Date.now(), age = now - dad.t, ended = dad.stop || (dad.until && now > dad.until);
+    const when = age < 90000 ? 'just now' : dur(age) + ' ago';
+    lineEl.textContent = (ended ? 'Last seen ' : poss + ' phone was here ') + when + '.';
+    const meet = pin || DEFAULT_PIN, here = { lat: dad.la, lng: dad.lo };
+    const fmt = (d) => d < 1000 ? 'about ' + Math.max(5, Math.round(d / 5) * 5) + ' m' : (d / 1000).toFixed(d < 10000 ? 1 : 0) + ' km';
+    let t = fmt(metres(here, meet)) + ' from the meeting point';
+    if (me) t += ', ' + fmt(metres(here, me)) + ' from you';
+    t = t.charAt(0).toUpperCase() + t.slice(1) + (dad.acc ? ' (accurate to ' + dad.acc + ' m).' : '.');
+    if (dad.stop) { t += ' Sharing was stopped on his phone.'; sub.classList.add('warn'); }
+    else if (ended) { t += ' The sharing time has run out.'; sub.classList.add('warn'); }
+    else if (age > 15 * 60000) { t += ' No update since then: his card may be closed or offline.'; sub.classList.add('warn'); }
+    if (relayDown) t += ' Can’t reach the location service right now.';
+    sub.textContent = t;
+    btn.hidden = false;
+    btn.href = isIOS ? 'https://maps.apple.com/?q=' + encodeURIComponent(A.name) + '&ll=' + dad.la.toFixed(6) + ',' + dad.lo.toFixed(6)
+                     : 'https://maps.google.com/?q=' + dad.la.toFixed(6) + ',' + dad.lo.toFixed(6);
+  }
+  function genCode() {
+    const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', r = crypto.getRandomValues(new Uint8Array(16));
+    return Array.from(r, (b, i) => (i && i % 4 === 0 ? '-' : '') + A[b % A.length]).join('');
+  }
 
   /* ---------- time ---------- */
   function tzOffset(ts, tz) {
@@ -470,7 +574,8 @@
     const bothDown = sA.phase !== 'before' && sA.phase !== 'air' && sA.phase !== 'unknown' &&
                      ((sB.phase !== 'before' && sB.phase !== 'air' && sB.phase !== 'unknown') || sB.phase === 'unknown');
     const anyDown = ['landed', 'out'].includes(sA.phase) || ['landed', 'out'].includes(sB.phase);
-    const mode = (bothDown || (anyDown && me)) ? 'airport' : 'routes';
+    const dadPt = dad && dad.la != null ? [dad.la, dad.lo] : null;
+    const mode = (bothDown || (anyDown && (me || dadPt))) ? 'airport' : 'routes';
 
     if (mode === 'routes') {
       [[A, sA], [B, sB]].forEach(([t, s]) => {
@@ -493,10 +598,14 @@
       const pts = [[meet.lat, meet.lng]];
       if (me) { add(dot([me.lat, me.lng], '#34d399', 8)).bindTooltip('You', { permanent: true, direction: 'right', className: 'pin-label', offset: [8, 0] }); pts.push([me.lat, me.lng]);
         if (me.acc) add(L.circle([me.lat, me.lng], { radius: me.acc, color: '#34d399', weight: 1, fillOpacity: 0.08 })); }
+      if (dadPt) {
+        add(dot(dadPt, A.color, 9)).bindTooltip(A.name, { permanent: true, direction: 'left', className: 'pin-label', offset: [-10, 0] }); pts.push(dadPt);
+        if (dad.acc) add(L.circle(dadPt, { radius: dad.acc, color: A.color, weight: 1, fillOpacity: 0.08 }));
+      }
       if (lastMode !== 'airport' || force) {
         if (pts.length > 1) map.fitBounds(pts, { padding: [50, 50], maxZoom: 18 }); else map.setView(pts[0], 17);
       }
-      $('map-note').textContent = me ? 'You and the meeting point' : 'Meeting point · tap "Show my location"';
+      $('map-note').textContent = dadPt ? A.name + ', from his travel card' : me ? 'You and the meeting point' : 'Meeting point · tap "Show my location"';
     }
     lastMode = mode;
     $('legend').innerHTML = '';
@@ -518,8 +627,7 @@
     fl.append(flightCard(A, sA, now), flightCard(B, sB, now));
     $('meet-spot').textContent = data.spot || 'Not set';
     $('meet-hint').textContent = data.spotHint || '';
-    $('maps-label').textContent = A.name + (A.name.toLowerCase().endsWith('s') ? "' live location" : "'s live location");
-    $('find-label').textContent = 'Find ' + A.name + (A.name.toLowerCase().endsWith('s') ? "' phone" : "'s phone");
+    renderDad();
     if (me) {
       const d = metres(me, pin || DEFAULT_PIN);
       $('meet-dist').hidden = false;
@@ -553,6 +661,8 @@
     FIELDS.forEach(f => { form.elements[f].value = (d && d[f]) || ''; });
     if (!form.elements.aFrom.value) form.elements.aFrom.value = 'PER';
     if (!form.elements.bFrom.value) form.elements.bFrom.value = 'MEL';
+    if (!form.elements.famCode.value) { try { form.elements.famCode.value = (JSON.parse(localStorage.getItem('fp-travel-card-v1')) || {}).famCode || ''; } catch (e) {} }
+    if (!form.elements.famCode.value && window.crypto) form.elements.famCode.value = genCode();
     $('pin-status').textContent = pin ? 'Pin set (' + pin.lat.toFixed(5) + ', ' + pin.lng.toFixed(5) + ').' : 'Shown at Bali airport arrivals until you set it.';
   }
   function readForm() { const d = {}; FIELDS.forEach(f => { d[f] = form.elements[f].value.trim(); }); return d; }
@@ -576,6 +686,7 @@
     persist(); show('main'); toast('Saved on this phone.');
   });
   $('edit-btn').addEventListener('click', () => { fill(data); show('setup'); });
+  $('code-new').addEventListener('click', () => { form.elements.famCode.value = genCode(); toast('New code made. Put the same code on the travel card, and share the link again.'); });
   $('cancel-btn').addEventListener('click', () => show('main'));
 
   function b64e(s) { return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
@@ -590,6 +701,7 @@
   function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2800); }
 
   let ticker = null;
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) pollDad(); });
   function show(view) {
     $('main').hidden = view !== 'main'; $('setup').hidden = view !== 'setup';
     $('cancel-btn').hidden = !data;
@@ -597,7 +709,8 @@
     if (view === 'main') {
       if (!map) initMap();
       lastMode = null; render(true);
-      clearInterval(ticker); ticker = setInterval(() => render(false), 30000);
+      clearInterval(ticker); ticker = setInterval(() => { render(false); pollDad(); }, 30000);
+      pollDad();
     } else clearInterval(ticker);
   }
 
