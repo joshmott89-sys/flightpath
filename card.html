@@ -226,6 +226,33 @@
   .papers-title span { display: block; font-size: 1.0625rem; font-weight: 600; color: var(--ink-soft); }
   .paper-img { width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--line); background: #fff; }
   .paper-empty { background: var(--ground); border-radius: 14px; padding: 1rem; color: var(--ink-soft); font-size: 1.125rem; font-weight: 600; }
+  .flightbar {
+    display: flex; align-items: center; gap: 0.75rem; width: calc(100% - 2rem); margin: 0 1rem 0.75rem;
+    background: var(--tile); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow);
+    padding: 0.8rem 0.9rem; text-align: left; color: var(--ink);
+  }
+  .flightbar > svg { width: 34px; height: 34px; flex: none; fill: var(--navy); }
+  .flightbar p { flex: 1; font-size: 1.125rem; font-weight: 800; line-height: 1.25; }
+  .flightbar p span { display: block; font-size: 1rem; font-weight: 600; color: var(--ink-soft); margin-top: 0.15rem; }
+  .flightbar .chev { width: 24px; height: 24px; flex: none; stroke: var(--ink-soft); fill: none; }
+  .fl-map { height: 260px; border-radius: 14px; overflow: hidden; background: var(--ground); position: relative; flex: none; }
+  .fl-map .leaflet-container { width: 100%; height: 100%; font: inherit; background: #dfe7f1; }
+  .fl-map .fl-off { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 1rem; color: var(--ink-soft); font-weight: 600; }
+  .fl-note { font-size: 0.9375rem; font-weight: 600; color: var(--ink-soft); margin-top: -0.6rem; }
+  .fl-pin { background: #fff; border: 1.5px solid var(--navy); color: var(--ink); font-weight: 800; font-size: 13px; padding: 2px 7px; border-radius: 8px; white-space: nowrap; box-shadow: none; }
+  .leaflet-tooltip.fl-pin::before { display: none; }
+  .fl { display: flex; flex-direction: column; gap: 0.6rem; padding-top: 1rem; border-top: 3px solid var(--navy); }
+  .fl-who { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
+  .fl-who b { font-size: 1.5rem; font-weight: 850; }
+  .fl-who span { font-size: 1.0625rem; font-weight: 700; color: var(--ink-soft); }
+  .fl-status { font-size: 1.5rem; font-weight: 600; line-height: 1.25; color: var(--ink-soft); text-wrap: pretty; }
+  .fl-status strong { font-weight: 900; color: var(--ink); background: linear-gradient(transparent 58%, #ffe27a 58%, #ffe27a 92%, transparent 92%); }
+  .fl-route { display: grid; grid-template-columns: auto 1fr auto; gap: 0.75rem; align-items: center; font-size: 1.375rem; font-weight: 850; }
+  .fl-track { position: relative; height: 6px; border-radius: 3px; background: var(--line); }
+  .fl-track i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; }
+  .fl-track svg { position: absolute; top: 50%; width: 26px; height: 26px; transform: translate(-50%, -50%) rotate(90deg); }
+  .fl-live { align-self: flex-start; min-height: 52px; padding: 0 1rem; border-radius: 14px; border: 2px solid var(--navy); color: var(--navy); background: #fff; font-size: 1.0625rem; font-weight: 800; display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; }
+  .fl-live svg { width: 22px; height: 22px; stroke: var(--navy); fill: none; }
   .steps-bar { display: grid; grid-template-columns: 1fr 1.6fr; gap: 0.75rem; }
   .steps-bar .back { background: rgba(255,255,255,0.12); color: #fff; }
   .steps-bar .back svg { stroke: #fff; }
@@ -264,6 +291,9 @@
   }
   .field input:focus, .field textarea:focus { outline: none; border-color: var(--sky-ink); box-shadow: 0 0 0 3px rgba(56,189,248,0.35); }
   .field textarea { min-height: 84px; resize: vertical; }
+  .field select { width: 100%; border: 1.5px solid var(--line); border-radius: 12px; padding: 0.8rem 0.6rem; font-size: 1.0625rem; background: #fbfcfe; }
+  .row2f { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  .row2f .field { margin-bottom: 0.875rem; }
   .field textarea.tall { min-height: 260px; line-height: 1.45; }
   .doc-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
   .doc-row img { width: 72px; height: 72px; object-fit: cover; object-position: top; border-radius: 10px; border: 1px solid var(--line); }
@@ -312,6 +342,8 @@
     <symbol id="i-doc" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></symbol>
     <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-5.6-7-11a7 7 0 0 1 14 0c0 5.4-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
     <symbol id="i-next" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></symbol>
+    <symbol id="i-plane" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L14 19v-5.5l8 2.5z"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3h7v7"/><path d="M10 14L21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></symbol>
     <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
   </defs>
 </svg>
@@ -332,6 +364,12 @@
       <p class="son-phone num" id="son-phone"></p>
     </div>
   </a>
+
+  <button type="button" class="flightbar" id="flightbar" hidden>
+    <svg aria-hidden="true"><use href="#i-plane"/></svg>
+    <p id="flightbar-text"></p>
+    <svg class="chev" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
 
   <div class="quick">
     <button type="button" class="go" id="steps-btn"><svg aria-hidden="true"><use href="#i-steps"/></svg>Airport steps</button>
@@ -411,6 +449,19 @@
     </div>
 
     <div class="group">
+      <h2>Flights</h2>
+      <p class="note" style="margin:0 0 .75rem">Shows Dad when each plane lands, with a map. Use the times on the tickets. If the Meetup page is set up on this phone, these fill in by themselves.</p>
+      <div class="row2f"><label class="field"><span>Dad's flight</span><input name="aFlight" placeholder="QZ549" autocapitalize="characters"></label>
+      <label class="field"><span>From</span><select name="aFrom"></select></label></div>
+      <label class="field"><span>Departs (local time where he leaves)</span><input name="aDep" type="datetime-local"></label>
+      <label class="field"><span>Lands in Bali (Bali time)</span><input name="aArr" type="datetime-local"></label>
+      <div class="row2f" style="margin-top:1rem"><label class="field"><span>Son's flight</span><input name="bFlight" placeholder="QZ411" autocapitalize="characters"></label>
+      <label class="field"><span>From</span><select name="bFrom"></select></label></div>
+      <label class="field"><span>Departs (optional, local time)</span><input name="bDep" type="datetime-local"></label>
+      <label class="field"><span>Lands in Bali (Bali time)</span><input name="bArr" type="datetime-local"></label>
+    </div>
+
+    <div class="group">
       <h2>Airport steps</h2>
       <label class="field"><span>One step per line</span><textarea name="steps" class="tall"></textarea><small>Shown one at a time with a big Next button. {spot} and {son} fill in the meeting point and name. Put **stars** around key words to make them bold and highlighted. Steps that mention papers, visa or QR get a "Show my papers" button.</small></label>
       <button type="button" class="link-btn" id="steps-reset">Reset to the default steps</button>
@@ -451,6 +502,17 @@
   </form>
 </main>
 
+<!-- ===== Flights (full screen) ===== -->
+<section id="flights" class="sign" hidden aria-live="polite">
+  <div class="sign-board" id="flights-board">
+    <p class="papers-title">Penerbangan / Flights</p>
+    <div class="fl-map"><div id="fl-map" style="width:100%;height:100%"></div><p class="fl-off" id="fl-off" hidden>The map needs internet. The times below still work.</p></div>
+    <p class="fl-note" id="fl-note">Plane positions are estimates from the timetable.</p>
+    <div id="fl-list" style="display:flex;flex-direction:column;gap:1.25rem"></div>
+  </div>
+  <button class="back" id="flights-back" type="button"><svg><use href="#i-back"/></svg>Back</button>
+</section>
+
 <!-- ===== Airport steps (full screen) ===== -->
 <section id="steps" class="sign" hidden aria-live="polite">
   <div class="sign-board" id="steps-board"></div>
@@ -487,7 +549,7 @@
 (function () {
   const KEY = 'fp-travel-card-v1';
   const $ = (id) => document.getElementById(id);
-  const FIELDS = ['dadName','sonName','sonPhone','spot','spotHint','hotelName','hotelAddr','backupName','backupPhone','medical','steps','famCode'];
+  const FIELDS = ['dadName','sonName','sonPhone','spot','spotHint','hotelName','hotelAddr','backupName','backupPhone','medical','steps','famCode','aFlight','aFrom','aDep','aArr','bFlight','bFrom','bDep','bArr'];
   const DOCS = ['docVisa', 'docArrival', 'docLevy', 'docInsurance'];
   const DEFAULT_STEPS = [
     'Follow the signs that say **ARRIVAL**. Walk with the other passengers.',
@@ -645,7 +707,7 @@
     $('son-phone').textContent = d.sonPhone || '';
     $('son').href = d.sonPhone ? tel(d.sonPhone) : '#';
 
-    updateSendLoc(); renderLive(); resumeShare();
+    updateSendLoc(); renderLive(); resumeShare(); renderFlightbar();
     const grid = $('tiles'); grid.innerHTML = '';
     phrases(d).forEach(p => {
       const b = el('button', { class: 'tile' + (p.urgent ? ' urgent' : ''), type: 'button', 'aria-label': p.label + ': show a sign to staff' },
@@ -688,7 +750,7 @@
     $('sign-back').focus({ preventScroll: true });
   }
   function closeSign() {
-    $('sign').hidden = true; $('steps').hidden = true; $('card').removeAttribute('aria-hidden');
+    $('sign').hidden = true; $('steps').hidden = true; $('flights').hidden = true; $('card').removeAttribute('aria-hidden');
     keepAwake(false);
   }
   function closeOverlay() { if (history.state && history.state.overlay) history.back(); else closeSign(); }
@@ -698,6 +760,7 @@
     if (st.sign) openSign(st.sign, true);
     else if (st.overlay === 'papers') openPapers(true);
     else if (st.overlay === 'steps') openSteps(true);
+    else if (st.overlay === 'flights') openFlights(true);
     else closeSign();
   });
 
@@ -751,7 +814,7 @@
   });
   $('steps-prev').addEventListener('click', () => { if (stepIndex === 0) closeOverlay(); else { stepIndex--; renderStep(); } });
   function showOverlay(id, fromHistory, state) {
-    $('sign').hidden = id !== 'sign'; $('steps').hidden = id !== 'steps';
+    $('sign').hidden = id !== 'sign'; $('steps').hidden = id !== 'steps'; $('flights').hidden = id !== 'flights';
     $('card').setAttribute('aria-hidden', 'true');
     $('toast').hidden = true; keepAwake(true);
     if (!fromHistory) history.pushState(state, '');
@@ -971,13 +1034,175 @@
   }
   $('code-new').addEventListener('click', () => { form.elements.famCode.value = genCode(); toast('New code made. Put the same code on the Meetup page.'); });
 
+
+  /* ---------- flights: status + map (map needs internet; times work offline) ---------- */
+  const BALI_TZ = 'Asia/Makassar';
+  const DPS = { code: 'DPS', name: 'Bali', lat: -8.7482, lng: 115.1672 };
+  const AIRPORTS = {
+    PER: { code: 'PER', name: 'Perth', lat: -31.9403, lng: 115.9669, tz: 'Australia/Perth', mins: 225 },
+    MEL: { code: 'MEL', name: 'Melbourne', lat: -37.6690, lng: 144.8410, tz: 'Australia/Melbourne', mins: 335 },
+    SYD: { code: 'SYD', name: 'Sydney', lat: -33.9399, lng: 151.1753, tz: 'Australia/Sydney', mins: 380 },
+    BNE: { code: 'BNE', name: 'Brisbane', lat: -27.3842, lng: 153.1175, tz: 'Australia/Brisbane', mins: 360 },
+    ADL: { code: 'ADL', name: 'Adelaide', lat: -34.9450, lng: 138.5306, tz: 'Australia/Adelaide', mins: 300 },
+    DRW: { code: 'DRW', name: 'Darwin', lat: -12.4147, lng: 130.8767, tz: 'Australia/Darwin', mins: 150 }
+  };
+  function tzOffset(ts, tz) {
+    const p = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(new Date(ts));
+    const g = (k) => +p.find(x => x.type === k).value;
+    return Date.UTC(g('year'), g('month') - 1, g('day'), g('hour'), g('minute'), g('second')) - ts;
+  }
+  function zonedToUtc(local, tz) {
+    if (!local) return NaN;
+    const [d, t] = local.split('T'); const [Y, M, D] = d.split('-').map(Number); const [h, m] = (t || '0:0').split(':').map(Number);
+    const naive = Date.UTC(Y, M - 1, D, h, m); let g = naive;
+    for (let i = 0; i < 3; i++) g = naive - tzOffset(g, tz);
+    return g;
+  }
+  const fmtT = (ts) => new Intl.DateTimeFormat('en-AU', { timeZone: BALI_TZ, hour: 'numeric', minute: '2-digit', hour12: true }).format(ts).replace(/\s/g, '').toLowerCase();
+  const fmtD = (ts) => new Intl.DateTimeFormat('en-AU', { timeZone: BALI_TZ, weekday: 'long', day: 'numeric', month: 'long' }).format(ts);
+  function dur(ms) { const m = Math.max(1, Math.round(Math.abs(ms) / 60000)); if (m < 60) return m + ' min'; const h = Math.floor(m / 60), r = m % 60; return h + (h === 1 ? ' hour' : ' hours') + (r ? ' ' + r + ' min' : ''); }
+  function fTraveller(k) {
+    if (!data || !data[k + 'Arr']) return null;
+    const from = AIRPORTS[data[k + 'From']] || (k === 'a' ? AIRPORTS.PER : AIRPORTS.MEL);
+    const arr = zonedToUtc(data[k + 'Arr'], BALI_TZ);
+    let dep = zonedToUtc(data[k + 'Dep'], from.tz), est = false;
+    if (!isFinite(dep)) { dep = arr - from.mins * 60000; est = true; }
+    const name = k === 'a' ? 'You' : (first(data.sonName) || 'Your son');
+    return { k, from, dep, arr, est, name, flight: (data[k + 'Flight'] || '').toUpperCase().replace(/\s+/g, ''), color: k === 'a' ? '#0b1730' : '#7c5cd6' };
+  }
+  function fState(t, now) {
+    if (now < t.dep) return { phase: 'before', r: 0 };
+    if (now < t.arr) return { phase: 'air', r: (now - t.dep) / (t.arr - t.dep) };
+    return { phase: 'down', r: 1 };
+  }
+  // status text with **key words**
+  function fText(t, s, now) {
+    const spot = data.spot || 'the meeting point';
+    if (t.k === 'a') {
+      if (s.phase === 'before') return (now > t.dep - 18 * 3600000 ? 'Your flight leaves ' + t.from.name + ' at **' + fmtT(t.dep) + '**.' : 'Your flight leaves ' + t.from.name + ' on **' + fmtD(t.dep) + '** at **' + fmtT(t.dep) + '**.') + ' You land in Bali at **' + fmtT(t.arr) + '**.';
+      if (s.phase === 'air') return 'You land in Bali in **' + dur(t.arr - now) + '**, at **' + fmtT(t.arr) + '**.';
+      return 'You have landed. Tap **Airport steps** and go to **' + spot + '**.';
+    }
+    if (s.phase === 'before') return t.name + ' lands in Bali at **' + fmtT(t.arr) + '**' + (now > t.dep - 18 * 3600000 ? '.' : ' on ' + fmtD(t.arr) + '.');
+    if (s.phase === 'air') return t.name + ' is flying. He lands at **' + fmtT(t.arr) + '**, in ' + dur(t.arr - now) + '.';
+    if (now - t.arr < 50 * 60000) return t.name + ' **has landed** (' + fmtT(t.arr) + '). He is getting through the airport.';
+    return t.name + ' **has landed**. He will meet you at **' + spot + '**.';
+  }
+  function richText(node, str) {
+    str.split(/\*\*(.+?)\*\*/).forEach((part, i) => { if (part) node.append(i % 2 ? el('strong', { text: part }) : document.createTextNode(part)); });
+    return node;
+  }
+  function renderFlightbar() {
+    const A = fTraveller('a'), B = fTraveller('b'), bar = $('flightbar');
+    bar.hidden = !A && !B; if (bar.hidden) return;
+    const now = Date.now(), t = $('flightbar-text'); t.innerHTML = '';
+    const main = A || B, s = fState(main, now);
+    let head;
+    const fmtS = (ts) => new Intl.DateTimeFormat('en-AU', { timeZone: BALI_TZ, weekday: 'short', day: 'numeric', month: 'short' }).format(ts);
+    if (A) head = s.phase === 'before' ? (A.dep - now > 18 * 3600000 ? 'Your flight: ' + fmtS(A.dep) + ', lands ' + fmtT(A.arr) : 'Your flight lands ' + fmtT(A.arr)) : s.phase === 'air' ? 'You land in ' + dur(A.arr - now) : 'You have landed';
+    else head = B.name + ' lands ' + fmtT(B.arr);
+    t.append(head);
+    if (A && B) { const sb = fState(B, now); t.append(el('span', { text: sb.phase === 'down' ? B.name + ' has landed' : B.name + ' lands ' + fmtT(B.arr) })); }
+    else t.append(el('span', { text: 'Tap to see the map' }));
+  }
+
+  let flMap = null, flLayers = [], flTimer = null;
+  function loadLeaflet() {
+    if (window.L) return Promise.resolve(true);
+    return new Promise((res) => {
+      const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.append(css);
+      const js = document.createElement('script'); js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      js.onload = () => res(true); js.onerror = () => res(false); document.head.append(js);
+    });
+  }
+  function slerp(a, b, f) {
+    const r = Math.PI / 180, p1 = a.lat * r, l1 = a.lng * r, p2 = b.lat * r, l2 = b.lng * r;
+    const d = 2 * Math.asin(Math.sqrt(Math.sin((p2 - p1) / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin((l2 - l1) / 2) ** 2));
+    if (!d) return [a.lat, a.lng];
+    const A = Math.sin((1 - f) * d) / Math.sin(d), B = Math.sin(f * d) / Math.sin(d);
+    const x = A * Math.cos(p1) * Math.cos(l1) + B * Math.cos(p2) * Math.cos(l2), y = A * Math.cos(p1) * Math.sin(l1) + B * Math.cos(p2) * Math.sin(l2), z = A * Math.sin(p1) + B * Math.sin(p2);
+    return [Math.atan2(z, Math.hypot(x, y)) / r, Math.atan2(y, x) / r];
+  }
+  function bearing(p, q) {
+    const r = Math.PI / 180, y = Math.sin((q[1] - p[1]) * r) * Math.cos(q[0] * r);
+    const x = Math.cos(p[0] * r) * Math.sin(q[0] * r) - Math.sin(p[0] * r) * Math.cos(q[0] * r) * Math.cos((q[1] - p[1]) * r);
+    return (Math.atan2(y, x) / r + 360) % 360;
+  }
+  function drawFlMap(list, now, fit) {
+    if (!flMap) return;
+    flLayers.forEach(l => flMap.removeLayer(l)); flLayers = [];
+    const add = (l) => { l.addTo(flMap); flLayers.push(l); return l; };
+    const pts = [[DPS.lat, DPS.lng]];
+    list.forEach(t => {
+      const s = fState(t, now), line = [];
+      for (let i = 0; i <= 48; i++) line.push(slerp(t.from, DPS, i / 48));
+      add(L.polyline(line, { color: t.color, weight: 3, opacity: 0.35, dashArray: '5 8' }));
+      const cut = Math.round(s.r * 48);
+      if (cut > 0) add(L.polyline(line.slice(0, cut + 1), { color: t.color, weight: 4 }));
+      add(L.circleMarker([t.from.lat, t.from.lng], { radius: 6, color: '#fff', weight: 2, fillColor: t.color, fillOpacity: 1 }))
+        .bindTooltip(t.from.name, { permanent: true, direction: 'left', className: 'fl-pin', offset: [-6, 0] });
+      pts.push([t.from.lat, t.from.lng]);
+      if (s.phase === 'air') {
+        const p = slerp(t.from, DPS, s.r), q = slerp(t.from, DPS, Math.min(1, s.r + 0.02));
+        add(L.marker(p, { zIndexOffset: 500, icon: L.divIcon({ className: '', iconSize: [34, 34], iconAnchor: [17, 17],
+          html: '<svg width="34" height="34" viewBox="0 0 24 24" style="transform:rotate(' + bearing(p, q) + 'deg);fill:' + t.color + ';filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))"><use href="#i-plane"/></svg>' }) }))
+          .bindTooltip(t.name, { permanent: true, direction: 'right', className: 'fl-pin', offset: [12, 0] });
+      }
+    });
+    add(L.circleMarker([DPS.lat, DPS.lng], { radius: 8, color: '#fff', weight: 3, fillColor: '#c42b2b', fillOpacity: 1 }))
+      .bindTooltip('Bali', { permanent: true, direction: 'top', className: 'fl-pin', offset: [0, -8] });
+    if (fit) flMap.fitBounds(pts, { paddingTopLeft: [70, 40], paddingBottomRight: [40, 30] });
+  }
+  function renderFlights(fit) {
+    const now = Date.now(), list = [fTraveller('a'), fTraveller('b')].filter(Boolean);
+    const box = $('fl-list'); box.innerHTML = '';
+    list.forEach(t => {
+      const s = fState(t, now), pct = Math.round(s.r * 100);
+      const card = el('div', { class: 'fl' });
+      card.append(el('p', { class: 'fl-who' }, el('b', { text: t.k === 'a' ? 'Your flight' : t.name, style: 'color:' + t.color }), el('span', { class: 'num', text: t.flight })));
+      card.append(richText(el('p', { class: 'fl-status' }), fText(t, s, now)));
+      const route = el('div', { class: 'fl-route' }, el('span', { text: t.from.code }));
+      const track = el('div', { class: 'fl-track' }); track.append(el('i', { style: 'width:' + pct + '%;background:' + t.color }));
+      const pl = icon('i-plane'); pl.style.left = pct + '%'; pl.style.fill = t.color; track.append(pl);
+      route.append(track, el('span', { text: 'DPS' })); card.append(route);
+      if (t.flight) {
+        const a = el('a', { class: 'fl-live', href: 'https://www.flightradar24.com/data/flights/' + encodeURIComponent(t.flight.toLowerCase()), target: '_blank', rel: 'noopener' }, icon('i-ext'), el('span', { text: 'Live position (needs internet)' }));
+        card.append(a);
+      }
+      box.append(card);
+    });
+    drawFlMap(list, now, fit);
+  }
+  async function openFlights(fromHistory) {
+    showOverlay('flights', fromHistory, { overlay: 'flights' });
+    $('flights-board').scrollTop = 0;
+    renderFlights(false);
+    const ok = navigator.onLine && await loadLeaflet();
+    $('fl-off').hidden = ok; $('fl-note').hidden = !ok;
+    if (ok && !flMap) {
+      flMap = L.map('fl-map', { zoomControl: false, attributionControl: false });
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 18 }).addTo(flMap);
+    }
+    if (flMap) { setTimeout(() => { flMap.invalidateSize(); renderFlights(true); }, 50); }
+    clearInterval(flTimer); flTimer = setInterval(() => { if (!$('flights').hidden) renderFlights(false); else clearInterval(flTimer); }, 30000);
+  }
+  $('flightbar').addEventListener('click', () => openFlights());
+  $('flights-back').addEventListener('click', closeOverlay);
+  setInterval(() => { if (data && !$('card').hidden) renderFlightbar(); }, 60000);
+
   /* ---------- setup ---------- */
   const form = $('form');
+  ['aFrom', 'bFrom'].forEach(n => Object.values(AIRPORTS).forEach(a => form.elements[n].append(new Option(a.name, a.code))));
   function fillForm(d) {
     FIELDS.forEach(f => { form.elements[f].value = (d && d[f]) || ''; });
     if (!form.elements.steps.value) form.elements.steps.value = DEFAULT_STEPS;
     if (!form.elements.famCode.value) { try { form.elements.famCode.value = (JSON.parse(localStorage.getItem('fp-meetup-v1')) || {}).famCode || ''; } catch (e) {} }
     form.elements.autoShare.checked = !!(d && d.autoShare);
+    if (!form.elements.aArr.value && !form.elements.bArr.value) {   // borrow flights from the Meetup page on this phone
+      try { const m = JSON.parse(localStorage.getItem('fp-meetup-v1')) || {}; ['aFlight','aFrom','aDep','aArr','bFlight','bFrom','bDep','bArr'].forEach(k => { if (m[k]) form.elements[k].value = m[k]; }); } catch (e) {}
+    }
+    if (!form.elements.aFrom.value) form.elements.aFrom.value = 'PER';
+    if (!form.elements.bFrom.value) form.elements.bFrom.value = 'MEL';
     pendingPhoto = d && d.photo;
     showPhotoPreview();
     DOCS.forEach(k => { pendingDocs[k] = (d && d[k]) || null; showDoc(k); });
