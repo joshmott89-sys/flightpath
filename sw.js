@@ -1,6 +1,6 @@
 // One service worker for both pages (they share this folder, so they share a scope).
 // Bump VERSION whenever any cached file changes.
-const VERSION = 'flightpath-v12';
+const VERSION = 'flightpath-v13';
 const LOCAL = ['card.html', 'qr.js', 'card.webmanifest', 'card-icon-192.png', 'card-icon-512.png',
                'meetup.html', 'meetup.webmanifest', 'meetup-icon-192.png', 'meetup-icon-512.png'];
 const REMOTE = ['https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'];
