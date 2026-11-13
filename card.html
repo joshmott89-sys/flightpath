@@ -1062,15 +1062,17 @@
   const fmtD = (ts) => new Intl.DateTimeFormat('en-AU', { timeZone: BALI_TZ, weekday: 'long', day: 'numeric', month: 'long' }).format(ts);
   function dur(ms) { const m = Math.max(1, Math.round(Math.abs(ms) / 60000)); if (m < 60) return m + ' min'; const h = Math.floor(m / 60), r = m % 60; return h + (h === 1 ? ' hour' : ' hours') + (r ? ' ' + r + ' min' : ''); }
   function fTraveller(k) {
-    if (!data || !data[k + 'Arr']) return null;
+    if (!data || !(data[k + 'Arr'] || data[k + 'Dep'] || data[k + 'Flight'])) return null;
     const from = AIRPORTS[data[k + 'From']] || (k === 'a' ? AIRPORTS.PER : AIRPORTS.MEL);
-    const arr = zonedToUtc(data[k + 'Arr'], BALI_TZ);
-    let dep = zonedToUtc(data[k + 'Dep'], from.tz), est = false;
-    if (!isFinite(dep)) { dep = arr - from.mins * 60000; est = true; }
+    let arr = zonedToUtc(data[k + 'Arr'], BALI_TZ), dep = zonedToUtc(data[k + 'Dep'], from.tz), est = false;
+    // Only one time given: estimate the other from the usual flight length.
+    if (!isFinite(dep) && isFinite(arr)) { dep = arr - from.mins * 60000; est = true; }
+    if (!isFinite(arr) && isFinite(dep)) { arr = dep + from.mins * 60000; est = true; }
     const name = k === 'a' ? 'You' : (first(data.sonName) || 'Your son');
-    return { k, from, dep, arr, est, name, flight: (data[k + 'Flight'] || '').toUpperCase().replace(/\s+/g, ''), color: k === 'a' ? '#0b1730' : '#7c5cd6' };
+    return { k, from, dep, arr, est, known: isFinite(arr), name, flight: (data[k + 'Flight'] || '').toUpperCase().replace(/\s+/g, ''), color: k === 'a' ? '#0b1730' : '#7c5cd6' };
   }
   function fState(t, now) {
+    if (!t.known) return { phase: 'unknown', r: 0 };
     if (now < t.dep) return { phase: 'before', r: 0 };
     if (now < t.arr) return { phase: 'air', r: (now - t.dep) / (t.arr - t.dep) };
     return { phase: 'down', r: 1 };
@@ -1078,12 +1080,14 @@
   // status text with **key words**
   function fText(t, s, now) {
     const spot = data.spot || 'the meeting point';
+    if (s.phase === 'unknown') return (t.k === 'a' ? 'Your flight' : t.name + '\u2019s flight') + (t.flight ? ' **' + t.flight + '**' : '') + '. Times not added yet.';
+    const about = t.est && ((t.k === 'a' && !data.aArr) || (t.k === 'b' && !data.bArr)) ? 'about ' : '';
     if (t.k === 'a') {
-      if (s.phase === 'before') return (now > t.dep - 18 * 3600000 ? 'Your flight leaves ' + t.from.name + ' at **' + fmtT(t.dep) + '**.' : 'Your flight leaves ' + t.from.name + ' on **' + fmtD(t.dep) + '** at **' + fmtT(t.dep) + '**.') + ' You land in Bali at **' + fmtT(t.arr) + '**.';
+      if (s.phase === 'before') return (now > t.dep - 18 * 3600000 ? 'Your flight leaves ' + t.from.name + ' at **' + fmtT(t.dep) + '**.' : 'Your flight leaves ' + t.from.name + ' on **' + fmtD(t.dep) + '** at **' + fmtT(t.dep) + '**.') + ' You land in Bali at **' + about + fmtT(t.arr) + '**.';
       if (s.phase === 'air') return 'You land in Bali in **' + dur(t.arr - now) + '**, at **' + fmtT(t.arr) + '**.';
       return 'You have landed. Tap **Airport steps** and go to **' + spot + '**.';
     }
-    if (s.phase === 'before') return t.name + ' lands in Bali at **' + fmtT(t.arr) + '**' + (now > t.dep - 18 * 3600000 ? '.' : ' on ' + fmtD(t.arr) + '.');
+    if (s.phase === 'before') return t.name + ' lands in Bali at **' + about + fmtT(t.arr) + '**' + (now > t.dep - 18 * 3600000 ? '.' : ' on ' + fmtD(t.arr) + '.');
     if (s.phase === 'air') return t.name + ' is flying. He lands at **' + fmtT(t.arr) + '**, in ' + dur(t.arr - now) + '.';
     if (now - t.arr < 50 * 60000) return t.name + ' **has landed** (' + fmtT(t.arr) + '). He is getting through the airport.';
     return t.name + ' **has landed**. He will meet you at **' + spot + '**.';
@@ -1096,13 +1100,14 @@
     const A = fTraveller('a'), B = fTraveller('b'), bar = $('flightbar');
     bar.hidden = !A && !B; if (bar.hidden) return;
     const now = Date.now(), t = $('flightbar-text'); t.innerHTML = '';
-    const main = A || B, s = fState(main, now);
+    const main = (A && A.known) ? A : (B && B.known) ? B : (A || B), s = fState(main, now);
     let head;
     const fmtS = (ts) => new Intl.DateTimeFormat('en-AU', { timeZone: BALI_TZ, weekday: 'short', day: 'numeric', month: 'short' }).format(ts);
-    if (A) head = s.phase === 'before' ? (A.dep - now > 18 * 3600000 ? 'Your flight: ' + fmtS(A.dep) + ', lands ' + fmtT(A.arr) : 'Your flight lands ' + fmtT(A.arr)) : s.phase === 'air' ? 'You land in ' + dur(A.arr - now) : 'You have landed';
+    if (s.phase === 'unknown') head = 'Flights: ' + [A, B].filter(Boolean).map(t => t.flight).filter(Boolean).join(' and ');
+    else if (A && main === A) head = s.phase === 'before' ? (A.dep - now > 18 * 3600000 ? 'Your flight: ' + fmtS(A.dep) + ', lands ' + fmtT(A.arr) : 'Your flight lands ' + fmtT(A.arr)) : s.phase === 'air' ? 'You land in ' + dur(A.arr - now) : 'You have landed';
     else head = B.name + ' lands ' + fmtT(B.arr);
     t.append(head);
-    if (A && B) { const sb = fState(B, now); t.append(el('span', { text: sb.phase === 'down' ? B.name + ' has landed' : B.name + ' lands ' + fmtT(B.arr) })); }
+    if (s.phase !== 'unknown' && A && B && main === A) { const sb = fState(B, now); if (sb.phase === 'unknown') t.append(el('span', { text: B.name + ': times not added yet' })); else t.append(el('span', { text: sb.phase === 'down' ? B.name + ' has landed' : B.name + ' lands ' + fmtT(B.arr) })); }
     else t.append(el('span', { text: 'Tap to see the map' }));
   }
 
@@ -1135,6 +1140,7 @@
     const pts = [[DPS.lat, DPS.lng]];
     list.forEach(t => {
       const s = fState(t, now), line = [];
+      if (s.phase === 'unknown') return;
       for (let i = 0; i <= 48; i++) line.push(slerp(t.from, DPS, i / 48));
       add(L.polyline(line, { color: t.color, weight: 3, opacity: 0.35, dashArray: '5 8' }));
       const cut = Math.round(s.r * 48);
