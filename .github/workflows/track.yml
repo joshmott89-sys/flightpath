@@ -1,33 +1,49 @@
 name: Live flight relay
 # Publishes live.json on the live-data branch for card.html to read.
-# Quick exit when no tracked plane is flying; polls every minute while one is.
+# Each run polls for ~25 min (every minute while a tracked plane is flying,
+# every 4 min otherwise), then starts the next run itself until the "until"
+# date in track.json. The schedule is only a backup: GitHub often delays it.
 on:
   schedule:
     - cron: '*/10 * * * *'
   workflow_dispatch:
 permissions:
   contents: write
+  actions: write
 concurrency:
   group: live-relay
   cancel-in-progress: false
 jobs:
   track:
     runs-on: ubuntu-latest
-    timeout-minutes: 14
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+      - name: Check trip window
+        id: win
+        run: |
+          until=$(node -p "require('./track.json').until || ''")
+          if [ -n "$until" ] && [ "$(date -u +%F)" \> "$until" ]; then echo "on=no" >> "$GITHUB_OUTPUT"; else echo "on=yes" >> "$GITHUB_OUTPUT"; fi
       - name: Poll and publish
+        if: steps.win.outputs.on == 'yes'
         run: |
           mkdir out && cd out && git init -q
           git config user.name "flight-relay" && git config user.email "flight-relay@users.noreply.github.com"
           git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}"
           if git fetch -q --depth 1 origin live-data 2>/dev/null; then git show FETCH_HEAD:live.json > live.json 2>/dev/null || true; fi
           git checkout -q --orphan live-data
-          for i in 1 2 3 4 5 6 7 8 9; do
+          end=$(( $(date +%s) + 25*60 ))
+          while [ "$(date +%s)" -lt "$end" ]; do
             code=0; node ../tools/track.mjs live.json || code=$?
             git add live.json
             git commit -q --amend -m "live" 2>/dev/null || git commit -q -m "live"
-            git push -q -f origin live-data
-            if [ "$code" != "0" ]; then break; fi
-            sleep 55
+            git push -q -f origin live-data || true
+            if [ "$code" = "0" ]; then sleep 55; else sleep 240; fi
           done
+      - name: Start the next run
+        if: steps.win.outputs.on == 'yes' && always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -sS -f -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/track.yml/dispatches" -d '{"ref":"main"}'
