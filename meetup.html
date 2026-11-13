@@ -694,9 +694,26 @@
 
   function b64e(s) { return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
   function b64d(s) { return decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/')))); }
+  /* short links: values only, squeezed with deflate, marked with a leading "z"; old long links still open */
+  async function pipe(bytes, stream) { return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer()); }
+  async function packSetup(payload) {
+    try {
+      const arr = FIELDS.map(f => payload[f] || '').concat([payload.pin || '']);
+      const z = await pipe(new TextEncoder().encode(JSON.stringify(arr)), new CompressionStream('deflate-raw'));
+      let bin = ''; z.forEach(b => bin += String.fromCharCode(b));
+      return 'z' + btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    } catch (e) { return b64e(JSON.stringify(payload)); }
+  }
+  async function unpackSetup(t) {
+    if (t[0] !== 'z') return JSON.parse(b64d(t));
+    const bin = atob(t.slice(1).replace(/-/g, '+').replace(/_/g, '/'));
+    const z = Uint8Array.from(bin, c => c.charCodeAt(0));
+    const arr = JSON.parse(new TextDecoder().decode(await pipe(z, new DecompressionStream('deflate-raw'))));
+    const d = {}; FIELDS.forEach((f, i) => d[f] = arr[i] || ''); d.pin = arr[FIELDS.length] || null; return d;
+  }
   $('share-btn').addEventListener('click', async () => {
     const payload = Object.assign(readForm(), { pin: pin || null });
-    const link = location.href.split('#')[0] + '#setup=' + b64e(JSON.stringify(payload));
+    const link = location.href.split('#')[0] + '#setup=' + await packSetup(payload);
     try { await navigator.clipboard.writeText(link); toast('Link copied. Send it privately, then open it and tap Save.'); }
     catch (e) { prompt('Copy this link:', link); }
   });
@@ -753,10 +770,10 @@
   const m = location.hash.match(/#setup=([\w-]+)/);
   if (m) {
     history.replaceState(null, '', location.pathname + location.search);
-    try {
-      const d = JSON.parse(b64d(m[1])); if (d.pin) pin = d.pin;
+    unpackSetup(m[1]).then(d => {
+      if (d.pin) pin = d.pin;
       fill(d); show('setup'); toast('Details loaded. Check them, then tap Save.');
-    } catch (e) { fill(data); show(data ? 'main' : 'setup'); toast('That share link is damaged.'); }
+    }).catch(() => { fill(data); show(data ? 'main' : 'setup'); toast('That share link is damaged.'); });
   } else if (data) show('main');
   else { fill(null); show('setup'); }
 })();
