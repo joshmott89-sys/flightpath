@@ -1104,7 +1104,26 @@
     const st = (j.states || []).find(x => x && String(x[1] || '').trim().toUpperCase() === cs && x[5] != null && x[6] != null);
     return st ? { flight: cs, lat: st[6], lon: st[5], alt_baro: st[8] ? 'ground' : Math.round((st[7] || st[13] || 0) / 0.3048), gs: (st[9] || 0) * 1.94384, track: st[10] } : null;
   }
+  // First choice: this project's own relay. A GitHub job fetches the positions on a server and publishes live.json.
+  const RELAY_API = 'https://api.github.com/repos/joshmott89-sys/flightpath/contents/live.json?ref=live-data';
+  const RELAY_RAW = 'https://raw.githubusercontent.com/joshmott89-sys/flightpath/live-data/live.json';
+  let relayCache = null;
+  async function relayData() {
+    if (relayCache && Date.now() - relayCache.at < 60000) return relayCache.j;
+    let j;
+    try { const r = await getJson(RELAY_API); j = JSON.parse(atob(String(r.content || '').replace(/\s/g, ''))); }
+    catch (e) { j = await getJson(RELAY_RAW + '?t=' + Math.floor(Date.now() / 60000)); }
+    relayCache = { at: Date.now(), j }; return j;
+  }
+  async function relayGet(cs) {
+    const j = await relayData();
+    if (!j || !j.reached || Date.now() - j.updated > 40 * 60000) throw new Error('relay stale');
+    if (!(j.tracked || []).includes(cs)) throw new Error('not tracked by relay');
+    const f = j.flights && j.flights[cs];
+    return f && Date.now() - f.t < 30 * 60000 ? Object.assign({ flight: cs }, f) : null;
+  }
   const SOURCES = [
+    { name: 'family relay', slow: true, get: relayGet },
     { name: 'adsb.lol', get: async (cs) => pickAc(await getJson(ADSB[0] + cs), cs) },
     { name: 'airplanes.live', get: async (cs) => pickAc(await getJson(ADSB[1] + cs), cs) },
     { name: 'adsb.fi', get: async (cs) => pickAc(await getJson(ADSB[2] + cs), cs) },
@@ -1112,13 +1131,13 @@
     { name: 'adsb.lol by relay', get: async (cs) => pickAc(await getJson('https://corsproxy.io/?url=' + encodeURIComponent(ADSB[0] + cs)), cs) },
     { name: 'adsb.fi by relay', get: async (cs) => pickAc(await getJson('https://api.allorigins.win/raw?url=' + encodeURIComponent(ADSB[2] + cs)), cs) }
   ];
-  let srcIx = 0; try { srcIx = Math.min(SOURCES.length - 1, +localStorage.getItem(KEY + ':src') || 0); } catch (e) {}
+  let srcIx = 0; try { srcIx = Math.min(SOURCES.length - 1, +localStorage.getItem(KEY + ':src2') || 0); } catch (e) {}
   async function fetchLive(cs, ctx) {
     for (let i = 0; i < SOURCES.length; i++) {
       const ix = (srcIx + i) % SOURCES.length;
       try {
         const ac = await SOURCES[ix].get(cs, ctx);
-        if (ix !== srcIx) { srcIx = ix; try { localStorage.setItem(KEY + ':src', ix); } catch (e) {} }
+        if (ix !== srcIx) { srcIx = ix; try { localStorage.setItem(KEY + ':src2', ix); } catch (e) {} }
         return { ok: true, ac, src: SOURCES[ix] };
       } catch (e) { /* blocked or down: try the next source */ }
     }
@@ -1148,12 +1167,12 @@
       tried = true;
       const res = await fetchLive(cs, { from: AIRPORTS[data[k + 'From']] || (k === 'a' ? AIRPORTS.PER : AIRPORTS.MEL), last: seen[k] });
       // OpenSky has a small daily allowance, so ask it less often, especially while the plane hasn't appeared yet
-      nextAt[k] = Date.now() + (res.src && res.src.slow ? (res.ac ? 55000 : 170000) : 20000);
+      nextAt[k] = Date.now() + (res.src && res.src.slow ? (res.ac ? 55000 : 110000) : 20000);
       if (!res.ok) continue;
       anyOk = true;
       if (res.ac) {
         const x = res.ac, ground = x.alt_baro === 'ground', prev = seen[k];
-        const sg = { t: Date.now(), lat: x.lat, lon: x.lon, alt: ground ? 0 : (+x.alt_baro || +x.alt_geom || 0), gs: +x.gs || 0, track: x.track != null ? +x.track : null, ground };
+        const sg = { t: x.t || Date.now(), lat: x.lat, lon: x.lon, alt: ground ? 0 : (+x.alt_baro || +x.alt_geom || 0), gs: +x.gs || 0, track: x.track != null ? +x.track : null, ground };
         if (ground && kmToBali(sg.lat, sg.lon) < 15) sg.landedAt = (prev && prev.landedAt) || sg.t;
         seen[k] = sg;
       }
@@ -1166,7 +1185,7 @@
   function liveState(t, now) {
     const sg = seen[t.k], w = tripWindow();
     if (!sg || (w && sg.t < w.start) || now - sg.t > 20 * 3600000) return null;
-    const km = kmToBali(sg.lat, sg.lon), total = kmToBali(t.from.lat, t.from.lng), fresh = now - sg.t < 4 * 60000;
+    const km = kmToBali(sg.lat, sg.lon), total = kmToBali(t.from.lat, t.from.lng), fresh = now - sg.t < 7 * 60000;
     if (sg.landedAt) return { phase: 'down', r: 1, at: sg.landedAt, live: true };
     if (sg.ground) return fresh ? { phase: 'gate', r: 0, live: true } : null;
     if (!fresh && km < 70 && sg.alt < 8000) return { phase: 'down', r: 1, at: sg.t + 8 * 60000, live: true };
@@ -1203,7 +1222,7 @@
     return t.name + ' **has landed**. He will meet you at **' + spot + '**.';
   }
   function fMeta(t, s, now) {
-    if (s.phase === 'air' && s.live && s.fresh) return 'Live now: ' + Math.round(s.km / 10) * 10 + ' km from Bali, ' + (Math.round(s.sg.alt * 0.3048 / 100) * 100).toLocaleString() + ' m high, ' + Math.round(s.sg.gs * 1.852 / 10) * 10 + ' km/h.';
+    if (s.phase === 'air' && s.live && s.fresh) return (now - s.sg.t < 90000 ? 'Live now: ' : 'Live, ' + dur(now - s.sg.t) + ' ago: ') + Math.round(s.km / 10) * 10 + ' km from Bali, ' + (Math.round(s.sg.alt * 0.3048 / 100) * 100).toLocaleString() + ' m high, ' + Math.round(s.sg.gs * 1.852 / 10) * 10 + ' km/h.';
     if (s.phase === 'air' && s.live) return 'Last seen ' + dur(now - s.sg.t) + ' ago. Planes can drop off the tracker over the sea, so this is worked out from where it was.';
     if (s.phase === 'down' && s.live) return 'From live tracking.';
     if (s.phase === 'air' || s.phase === 'before' || (s.phase === 'down' && !s.live)) return s.gate ? 'Live now: on the ground.' : 'Worked out from the timetable.';
@@ -1323,7 +1342,7 @@
       const res = await Promise.all(SOURCES.map(src => src.get(callsign(probe.fl), { from: probe.from }).then(() => true, () => false)));
       const good = SOURCES.filter((_, i) => res[i]).map(x => x.name), bad = SOURCES.filter((_, i) => !res[i]).map(x => x.name);
       const firstGood = res.indexOf(true);
-      if (firstGood >= 0) { srcIx = firstGood; try { localStorage.setItem(KEY + ':src', firstGood); } catch (e) {} }
+      if (firstGood >= 0) { srcIx = firstGood; try { localStorage.setItem(KEY + ':src2', firstGood); } catch (e) {} }
       lines.push(good.length ? 'Live tracking works on this phone, using ' + good[0] + '.' : 'Live tracking could not be reached from this phone.');
       lines.push('[Reached: ' + (good.join(', ') || 'none') + '. Blocked: ' + (bad.join(', ') || 'none') + '.]');
       if (!good.length) { out.textContent = lines.join(' '); return; }

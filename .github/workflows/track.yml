@@ -1,0 +1,33 @@
+name: Live flight relay
+# Publishes live.json on the live-data branch for card.html to read.
+# Quick exit when no tracked plane is flying; polls every minute while one is.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: live-relay
+  cancel-in-progress: false
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Poll and publish
+        run: |
+          mkdir out && cd out && git init -q
+          git config user.name "flight-relay" && git config user.email "flight-relay@users.noreply.github.com"
+          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}"
+          if git fetch -q --depth 1 origin live-data 2>/dev/null; then git show FETCH_HEAD:live.json > live.json 2>/dev/null || true; fi
+          git checkout -q --orphan live-data
+          for i in 1 2 3 4 5 6 7 8 9; do
+            code=0; node ../tools/track.mjs live.json || code=$?
+            git add live.json
+            git commit -q --amend -m "live" 2>/dev/null || git commit -q -m "live"
+            git push -q -f origin live-data
+            if [ "$code" != "0" ]; then break; fi
+            sleep 55
+          done
