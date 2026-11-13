@@ -1462,15 +1462,36 @@
   // Setup link: details travel in the URL fragment, which browsers never send to the server.
   function b64e(s) { return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
   function b64d(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); return decodeURIComponent(escape(atob(s))); }
+  /* short links: values only (default steps left out), squeezed with deflate, marked with a leading "z"; old long links still open */
+  async function pipe(bytes, stream) { return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer()); }
+  async function packSetup(d) {
+    try {
+      const base = DEFAULT_STEPS.split('\n');
+      const packSteps = t => t.trim() === DEFAULT_STEPS.trim() ? '' : t.split('\n').map(l => { const i = base.indexOf(l); return i >= 0 && l.trim() ? i : l; });
+      const arr = FIELDS.map(f => f === 'steps' ? packSteps(d.steps || '') : (d[f] || '')).concat([d.autoShare ? 1 : 0]);
+      while (arr.length && !arr[arr.length - 1]) arr.pop();
+      const z = await pipe(new TextEncoder().encode(JSON.stringify(arr)), new CompressionStream('deflate-raw'));
+      let bin = ''; z.forEach(b => bin += String.fromCharCode(b));
+      return 'z' + btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    } catch (e) { return b64e(JSON.stringify(d)); }
+  }
+  async function unpackSetup(t) {
+    if (t[0] !== 'z') return JSON.parse(b64d(t));
+    const bin = atob(t.slice(1).replace(/-/g, '+').replace(/_/g, '/'));
+    const arr = JSON.parse(new TextDecoder().decode(await pipe(Uint8Array.from(bin, c => c.charCodeAt(0)), new DecompressionStream('deflate-raw'))));
+    const base = DEFAULT_STEPS.split('\n');
+    const d = {}; FIELDS.forEach((f, i) => { const v = arr[i]; d[f] = Array.isArray(v) ? v.map(x => typeof x === 'number' ? base[x] : x).join('\n') : (v || ''); });
+    d.autoShare = !!arr[FIELDS.length]; return d;
+  }
   $('link-btn').addEventListener('click', async () => {
-    const link = location.href.split('#')[0] + '#setup=' + b64e(JSON.stringify(readForm()));
+    const link = location.href.split('#')[0] + '#setup=' + await packSetup(readForm());
     try { await navigator.clipboard.writeText(link); toast('Link copied. Open it on Dad’s phone, then tap Save.'); }
     catch (e) { prompt('Copy this link:', link); }
   });
-  function importFromHash() {
+  async function importFromHash() {
     const m = location.hash.match(/#setup=([\w-]+)/); if (!m) return null;
     history.replaceState(null, '', location.pathname + location.search);
-    try { return JSON.parse(b64d(m[1])); } catch (e) { toast('That setup link is damaged.'); return null; }
+    try { return await unpackSetup(m[1]); } catch (e) { toast('That setup link is damaged.'); return null; }
   }
 
   /* ---------- views ---------- */
@@ -1484,7 +1505,7 @@
 
   (async () => {
     await loadMedia();
-    const imported = importFromHash();
+    const imported = await importFromHash();
     if (imported) {
       const keep = {}; MEDIA.forEach(k => { keep[k] = data && data[k]; });
       fillForm(Object.assign({}, data || {}, imported, keep));
