@@ -856,16 +856,24 @@
       const msg = 'I am here: https://maps.google.com/?q=' + la.toFixed(6) + ',' + lo.toFixed(6) + (data.spot ? ' (meeting point: ' + data.spot + ')' : '');
       const num = String(data.sonPhone).replace(/[^\d]/g, '');
       updateSendLoc();
-      // Open the WhatsApp app directly (the wa.me web page can be blocked on some mobile networks).
-      // If the app does not open within 2.5 s, offer a plain text message instead.
-      const wa = 'whatsapp://send?phone=' + num + '&text=' + encodeURIComponent(msg);
+      // Hand off to the WhatsApp app without navigating this page away, so coming back shows the card, not an error page.
+      // Android: an intent link (Chrome passes it straight to WhatsApp). iPhone: the whatsapp:// link.
+      const text = encodeURIComponent(msg);
+      const wa = isIOS ? 'whatsapp://send?phone=' + num + '&text=' + text
+        : 'intent://send?phone=' + num + '&text=' + text + '#Intent;scheme=whatsapp;package=com.whatsapp;end';
       const box = $('send-fallback');
       $('send-wa').href = wa;
-      $('send-sms').href = 'sms:+' + num + (isIOS ? '&' : '?') + 'body=' + encodeURIComponent(msg);
+      $('send-sms').href = 'sms:+' + num + (isIOS ? '&' : '?') + 'body=' + text;
       box.hidden = true;
-      const t = setTimeout(() => { if (!document.hidden) { box.hidden = false; box.scrollIntoView({ block: 'center', behavior: 'smooth' }); } }, 2500);
-      document.addEventListener('visibilitychange', function gone() { if (document.hidden) { clearTimeout(t); document.removeEventListener('visibilitychange', gone); } });
-      location.href = wa;
+      let left = false;
+      const t = setTimeout(() => { if (!left && !document.hidden) { box.hidden = false; box.scrollIntoView({ block: 'center', behavior: 'smooth' }); } }, 4000);
+      const onVis = () => {
+        if (document.hidden) { left = true; clearTimeout(t); return; }
+        if (left) { box.hidden = true; document.removeEventListener('visibilitychange', onVis); window.scrollTo(0, 0); }
+      };
+      document.addEventListener('visibilitychange', onVis);
+      window.addEventListener('blur', () => { left = true; clearTimeout(t); }, { once: true });
+      const go = document.createElement('a'); go.href = wa; go.rel = 'noopener'; document.body.append(go); go.click(); go.remove();
     }, () => { updateSendLoc(); toast('Could not find your location. Try again near a window.'); }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 });
   });
 
