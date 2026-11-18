@@ -105,7 +105,11 @@
     border: none; border-radius: 18px; background: var(--ok); color: #fff;
     font-size: 1.1875rem; font-weight: 800;
   }
-  .send-loc svg { width: 26px; height: 26px; stroke: #fff; }
+  .send-loc svg { width: 26px; height: 26px; stroke: #fff; flex: none; }
+  a.send-loc { text-decoration: none; text-align: center; padding: 0.6rem 1rem; box-sizing: border-box; }
+  .send-fallback { margin: 0.75rem 1rem 0; display: grid; gap: 0.6rem; }
+  .send-fallback p { margin: 0; font-size: 1.125rem; font-weight: 800; color: var(--ink); }
+  .send-fallback .send-loc { margin: 0; width: 100%; }
   .send-loc.alt { background: var(--tile); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow); }
   .send-loc.alt svg { stroke: var(--ok); }
   .live { margin: 0.75rem 1rem 0; }
@@ -387,6 +391,11 @@
     <div class="live-on" id="live-on" hidden><p id="live-text" aria-live="polite"></p><button type="button" id="live-stop">Stop</button></div>
   </div>
   <button type="button" class="send-loc" id="send-loc" hidden><svg aria-hidden="true"><use href="#i-send"/></svg><span id="send-loc-label">Send my location</span></button>
+  <div class="send-fallback" id="send-fallback" hidden>
+    <p>Did not open? Tap one:</p>
+    <a class="send-loc" id="send-wa"><svg aria-hidden="true"><use href="#i-send"/></svg><span>Open WhatsApp</span></a>
+    <a class="send-loc alt" id="send-sms"><svg aria-hidden="true"><use href="#i-send"/></svg><span>Send as a text message</span></a>
+  </div>
 
   <h2 class="help-title">Need help? Tap one and show it.</h2>
   <div class="tiles" id="tiles"></div>
@@ -834,6 +843,7 @@
   function updateSendLoc() {
     const b = $('send-loc');
     b.hidden = !(navigator.onLine && data && data.sonPhone);
+    if (b.hidden) $('send-fallback').hidden = true;
     $('send-loc-label').textContent = 'Send my location to ' + (first(data && data.sonName) || 'family');
   }
   window.addEventListener('online', () => { if (data) { updateSendLoc(); renderLive(); resumeShare(); shareTick(); } });
@@ -846,7 +856,16 @@
       const msg = 'I am here: https://maps.google.com/?q=' + la.toFixed(6) + ',' + lo.toFixed(6) + (data.spot ? ' (meeting point: ' + data.spot + ')' : '');
       const num = String(data.sonPhone).replace(/[^\d]/g, '');
       updateSendLoc();
-      location.href = 'https://wa.me/' + num + '?text=' + encodeURIComponent(msg);
+      // Open the WhatsApp app directly (the wa.me web page can be blocked on some mobile networks).
+      // If the app does not open within 2.5 s, offer a plain text message instead.
+      const wa = 'whatsapp://send?phone=' + num + '&text=' + encodeURIComponent(msg);
+      const box = $('send-fallback');
+      $('send-wa').href = wa;
+      $('send-sms').href = 'sms:+' + num + (isIOS ? '&' : '?') + 'body=' + encodeURIComponent(msg);
+      box.hidden = true;
+      const t = setTimeout(() => { if (!document.hidden) { box.hidden = false; box.scrollIntoView({ block: 'center', behavior: 'smooth' }); } }, 2500);
+      document.addEventListener('visibilitychange', function gone() { if (document.hidden) { clearTimeout(t); document.removeEventListener('visibilitychange', gone); } });
+      location.href = wa;
     }, () => { updateSendLoc(); toast('Could not find your location. Try again near a window.'); }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 });
   });
 
